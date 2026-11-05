@@ -5,7 +5,8 @@ import csv
 import os
 import time
 from datetime import datetime
-from gomoku_ai import ai_easy, ai_search, candidate_moves, get_empty_cells
+from gomoku_ai import get_empty_cells
+from agents import DIFFICULTIES, make_agent, winning_line
 from suggestion_overlay import SuggestionOverlay, compute_suggestions
 from gomoku_coach import summarize_gomoku_game, analyze_game_rule_based
 from gomoku_ml_coach import coach_reply, retrain_model_if_needed
@@ -184,9 +185,14 @@ class GomokuGamePage:
         label = tk.Label(bar, text="Difficulty:", font=("Arial", 12, "bold"), bg="#f0f4f8", fg="#2c3e50")
         label.pack(side=tk.LEFT, padx=(0, 10))
         self.difficulty_var = tk.StringVar(value="Medium")
-        dropdown = tk.OptionMenu(bar, self.difficulty_var, "Easy", "Medium", "Hard")
+        dropdown = tk.OptionMenu(bar, self.difficulty_var, *DIFFICULTIES.keys())
         dropdown.config(font=("Arial", 12), bg="white")
         dropdown.pack(side=tk.LEFT)
+        self.difficulty_desc = tk.Label(bar, text=DIFFICULTIES["Medium"], font=("Arial", 11),
+                                        bg="#f0f4f8", fg="#757575")
+        self.difficulty_desc.pack(side=tk.LEFT, padx=(10, 0))
+        self.difficulty_var.trace_add(
+            "write", lambda *_: self.difficulty_desc.config(text=DIFFICULTIES.get(self.difficulty_var.get(), "")))
     
     def draw_grid(self):
         # Draw grid lines
@@ -195,10 +201,9 @@ class GomokuGamePage:
         
         for i in range(15):
             x = margin + i * cell_size
-            self.board_canvas.create_line(x, margin, x, 495 - margin, 
-                                         fill="#8b6f47", width=1)
-            self.board_canvas.create_line(margin, x, 495 - margin, x, 
-                                         fill="#8b6f47", width=1)
+            end = margin + 14 * cell_size
+            self.board_canvas.create_line(x, margin, x, end, fill="#8b6f47", width=1)
+            self.board_canvas.create_line(margin, x, end, x, fill="#8b6f47", width=1)
         
         # Draw star points
         star_points = [(3, 3), (3, 11), (7, 7), (11, 3), (11, 11)]
@@ -386,6 +391,15 @@ class GomokuGamePage:
         self.computer_stone_canvas.create_oval(3, 3, 27, 27,
                                               fill="white", outline="#d0d0d0", width=2)
 
+        # AI decision information (what the agent searched and why it moved)
+        ai_frame = tk.Frame(inner_frame, bg="#f7f9fb", highlightthickness=1, highlightbackground="#e0e0e0")
+        ai_frame.pack(side=tk.TOP, pady=(12, 0), fill=tk.X)
+        tk.Label(ai_frame, text="AI decision", font=("Arial", 10, "bold"),
+                 bg="#f7f9fb", fg="#2c3e50").pack(anchor="w", padx=8, pady=(6, 0))
+        self.ai_info_label = tk.Label(ai_frame, text="Waiting for the first move", font=("Arial", 9),
+                                      bg="#f7f9fb", fg="#4a4a4a", justify=tk.LEFT, wraplength=180)
+        self.ai_info_label.pack(anchor="w", padx=8, pady=(2, 8))
+
         # Initialize indicator colors if selection already made
         if self.player_color:
             self.update_indicator_colors()
@@ -436,6 +450,18 @@ class GomokuGamePage:
         sugg_btn.bind("<Enter>", lambda e: sugg_btn.config(bg="#1e88e5"))
         sugg_btn.bind("<Leave>", lambda e: sugg_btn.config(bg="#42a5f5"))
 
+        # Undo button (takes back your move and the computer's reply)
+        undo_btn = tk.Button(controls_frame, text="Undo",
+                             font=("Arial", 12, "bold"),
+                             bg="#78909c", fg="white",
+                             relief=tk.FLAT, cursor="hand2",
+                             padx=40, pady=10,
+                             borderwidth=0,
+                             command=self.undo_move)
+        undo_btn.pack(pady=5, fill=tk.X)
+        undo_btn.bind("<Enter>", lambda e: undo_btn.config(bg="#607d8b"))
+        undo_btn.bind("<Leave>", lambda e: undo_btn.config(bg="#78909c"))
+
         # Hotkey to toggle suggestions
         self.root.bind("<Key-s>", lambda e: self.show_suggestions())
     
@@ -468,6 +494,10 @@ class GomokuGamePage:
                 winner = "You" if mover_color == self.player_color else "Computer"
                 self._finalize_game(winner)
                 return
+            if not get_empty_cells(self.state):
+                self.timer_running = False
+                self._finalize_game("Draw")
+                return
             
             # Switch player
             self.current_player = "white" if self.current_player == "black" else "black"
@@ -492,6 +522,8 @@ class GomokuGamePage:
                                              fill=fill, outline=outline, width=2)
         self.board[row][col] = stone
         self.state[row][col] = color
+        self.board_canvas.delete("last_move")
+        self.board_canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="#e34948", outline="", tags="last_move")
         try:
             elapsed = self.timer_seconds
         except Exception:
@@ -520,29 +552,44 @@ class GomokuGamePage:
         ai_color = self.computer_color or "white"
         player_color = self.player_color or ("black" if ai_color == "white" else "white")
 
-        def worker():
-            if difficulty == "Easy":
-                move = ai_easy(self.state, ai_color, player_color)
-            elif difficulty == "Hard":
-                move = ai_search(self.state, ai_color, player_color, depth=3, use_alpha_beta=True, max_candidates=12)
-            else:  # Medium
-                move = ai_search(self.state, ai_color, player_color, depth=2, use_alpha_beta=False, max_candidates=10)
+        agent = make_agent(difficulty)
+        board_copy = [row[:] for row in self.state]
 
+        result = {}
+
+        def worker():
+            result["move"] = agent.choose_move(board_copy, ai_color)
+
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+
+        def poll():
+            # Tk is not thread-safe, so the main thread polls for the worker's result
+            if thread.is_alive():
+                self.root.after(20, poll)
+                return
+            move = result.get("move")
             if move is None:
                 import random
                 empties = get_empty_cells(self.state)
                 move = random.choice(empties) if empties else None
+            self._apply_ai_move(move, ai_color, agent.stats)
 
-            self.root.after(0, lambda: self._apply_ai_move(move, ai_color))
+        poll()
 
-        threading.Thread(target=worker, daemon=True).start()
-
-    def _apply_ai_move(self, move, ai_color):
+    def _apply_ai_move(self, move, ai_color, stats=None):
         if move is not None:
             row, col = move
             # Check still empty (player may undo quickly)
             if self.state[row][col] is None:
                 self.place_stone(row, col, ai_color)
+                if stats is not None:
+                    self.move_log[-1].update({
+                        "ai_engine": stats.agent, "ai_nodes": stats.nodes, "ai_depth": stats.depth,
+                        "ai_time_ms": round(stats.time_ms, 1), "ai_reason": stats.reason,
+                    })
+                    self.ai_info_label.config(
+                        text=f"{stats.summary()}\nMove {chr(65 + col)}{row + 1}: {stats.reason}")
                 if self.check_winner(row, col):
                     self.timer_running = False
                     self._finalize_game("Computer")
@@ -551,6 +598,11 @@ class GomokuGamePage:
                         self.board_canvas.config(cursor="arrow")
                     except Exception:
                         pass
+                    return
+                if not get_empty_cells(self.state):
+                    self.timer_running = False
+                    self.ai_thinking = False
+                    self._finalize_game("Draw")
                     return
                 self.current_player = self.player_color or "black"
                 # Schedule auto-suggestion for player's turn
@@ -581,9 +633,16 @@ class GomokuGamePage:
                 r -= dx
                 c -= dy
             if count >= 5:
+                self._highlight_line(winning_line(self.state, row, col))
                 return True
         return False
-    
+
+    def _highlight_line(self, cells):
+        for r, c in cells or []:
+            x, y = 15 + c * 32, 15 + r * 32
+            self.board_canvas.create_oval(x - 15, y - 15, x + 15, y + 15, outline="#e34948", width=3,
+                                          tags="win_line")
+
     def start_timer(self):
         if self.timer_running:
             self.timer_seconds += 1
@@ -600,6 +659,9 @@ class GomokuGamePage:
                     self.board_canvas.delete(self.board[row][col])
                     self.board[row][col] = None
                 self.state[row][col] = None
+        self.board_canvas.delete("last_move")
+        self.board_canvas.delete("win_line")
+        self.ai_info_label.config(text="Waiting for the first move")
         # Hide suggestions overlay on restart
         if hasattr(self, 'suggestion_overlay'):
             self.suggestion_overlay.hide()
@@ -626,15 +688,22 @@ class GomokuGamePage:
         self.game_started_at = datetime.now()
     
     def undo_move(self):
-        # Find last move and remove it
-        for row in range(14, -1, -1):
-            for col in range(14, -1, -1):
-                if self.board[row][col] is not None:
-                    self.board_canvas.delete(self.board[row][col])
-                    self.board[row][col] = None
-                    self.state[row][col] = None
-                    self.current_player = "white" if self.current_player == "black" else "black"
-                    return
+        # Take back the computer's reply and the player's last move, using the move history
+        if self.ai_thinking or not self.move_log:
+            return
+        to_undo = 2 if self.move_log[-1]["player"] == self.computer_color and len(self.move_log) > 1 else 1
+        for _ in range(to_undo):
+            m = self.move_log.pop()
+            r, c = m["row"], m["col"]
+            if self.board[r][c] is not None:
+                self.board_canvas.delete(self.board[r][c])
+            self.board[r][c] = None
+            self.state[r][c] = None
+        self.board_canvas.delete("last_move")
+        self.current_player = self.player_color
+        if self.move_log and self.move_log[-1]["player"] == self.player_color:
+            self.current_player = self.computer_color
+            self.root.after(300, self.computer_move)
     
     def go_home(self):
         self.timer_running = False
@@ -681,8 +750,18 @@ class GomokuGamePage:
                     "low_value",
                     "risky_move",
                     "forced_move",
+                    "difficulty",
+                    "ai_engine",
+                    "ai_nodes",
+                    "ai_depth",
+                    "ai_time_ms",
+                    "ai_reason",
+                    "board_state",
                 ])
+                difficulty = self.difficulty_var.get()
+                replay = ["."] * 225
                 for idx, m in enumerate(self.move_log, start=1):
+                    replay[m["row"] * 15 + m["col"]] = m["player"][0]
                     player = m["player"]
                     row = m["row"]
                     col = m["col"]
@@ -726,6 +805,13 @@ class GomokuGamePage:
                         low_value,
                         risky_move,
                         forced_move,
+                        difficulty,
+                        m.get("ai_engine", ""),
+                        m.get("ai_nodes", ""),
+                        m.get("ai_depth", ""),
+                        m.get("ai_time_ms", ""),
+                        m.get("ai_reason", ""),
+                        "".join(replay),
                     ])
         except Exception:
             return ""
