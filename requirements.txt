@@ -1,0 +1,16 @@
+# Gomoku ML Coach - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core ML & Data Processing
+pandas>=1.3.0
+numpy>=1.21.0
+xgboost>=1.5.0
+scikit-learn>=0.24.0
+
+# Utilities
+python-dateutil>=2.8.0
+
+# Note: tkinter comes built-in with Python on Windows
+# If you're on Linux/Mac and tkinter is missing, install:
+# Ubuntu/Debian: sudo apt-get install python3-tk
+# macOS: brew install python-tk@3.x (where x is your Python version)

@@ -1,0 +1,13 @@
+mode,winner,started_at
+single_player,You,2025-11-18T23:06:24.529151
+
+move_no,player,row,col,elapsed_seconds,good_move,missed_win,missed_block,weak_edge,low_value,risky_move,forced_move
+1,black,6,7,7,0,0,0,0,0,0,0
+2,white,4,5,8,0,0,0,0,0,0,0
+3,black,6,8,9,0,0,0,0,0,0,0
+4,white,2,5,11,0,0,0,0,0,0,0
+5,black,6,9,11,0,0,0,0,0,0,0
+6,white,1,5,13,0,0,0,0,0,0,0
+7,black,6,10,14,0,0,0,0,0,0,0
+8,white,6,6,14,0,0,0,0,0,0,0
+9,black,6,11,15,1,0,0,0,0,0,0
