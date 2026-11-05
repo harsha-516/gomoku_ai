@@ -10,6 +10,8 @@ This module:
 The pipeline runs automatically after each game to provide personalized feedback.
 """
 
+from __future__ import annotations
+
 import os
 import glob
 import pickle
@@ -17,7 +19,6 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
 import warnings
-import xgboost as xgb 
 
 warnings.filterwarnings("ignore")
 
