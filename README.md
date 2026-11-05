@@ -1,6 +1,54 @@
-# 🎮 Gomoku AI Game
+# 🎮 Intelligent Gomoku Game
 
-A full-featured **Gomoku (Five-in-a-Row) game** with intelligent AI opponent, real-time move suggestions, and machine learning-powered coaching. Built with Python and Tkinter for an interactive learning experience.
+An **AI course project** that builds a 15×15 Gomoku (Five-in-a-Row) game and uses it as an
+experimental environment for classical AI techniques. The computer opponent goes through the full
+progression described in the project synopsis, **Random → Rule-Based → Minimax → Minimax with
+Alpha-Beta Pruning**, plus an advanced **Iterative Deepening + Transposition Table** agent. A
+benchmark compares them on playing strength, decision time, search depth and number of game states
+evaluated.
+
+**Team:** Harsha Anvitha (240469) · Himanshi (240475) · Ketan (240510)
+
+---
+
+## 🙏 Acknowledgements & Contributions
+
+This project builds on an earlier Gomoku project by a senior
+([karthik14344/Gomuku](https://github.com/karthik14344/Gomuku)), which provided the Tkinter GUI,
+Player vs Player mode, move suggestions and the rule-based / XGBoost post-game coaches.
+
+**Our contributions:**
+- A new AI engine (`agents.py`): separate Random, Rule-Based, Minimax and Alpha-Beta agents, an
+  Expert agent with iterative deepening and a Zobrist transposition table, a pattern-based heuristic,
+  candidate move generation, and search statistics plus a plain-English reason for every move
+- Integration into the game: four difficulty levels, a live AI decision panel, draw detection,
+  winning-line highlight, a fixed Undo, and richer CSV logging (board state, AI decision info)
+- AI Vs AI mode (`ai_vs_ai.py`)
+- Experiments (`benchmark.py`, `results/`) and the Pandas analysis notebook (`analysis/`)
+- Unit tests (`tests/`, 32 tests)
+- Bug fixes (crash without xgboost, debug output) and updated documentation
+
+---
+
+## 🧭 Synopsis → Implementation
+
+| Synopsis requirement | Where it is implemented |
+|---|---|
+| 15×15 board, alternating turns, win / draw detection (7.1, 7.2) | `agents.py` (rules), `single_player.py`, `player_vs_player.py` |
+| Random AI (7.3) | `RandomAgent` in `agents.py` (**Easy**) |
+| Rule-Based AI: win, block, deny threats, build patterns, counter-attack (7.4) | `RuleBasedAgent` (**Medium**), every move reports which rule fired |
+| Minimax (7.5) | `MinimaxAgent` (plain, no pruning, used in experiments) |
+| Alpha-Beta Pruning (7.6) | `AlphaBetaAgent` (**Hard**), with and without move ordering |
+| Heuristic evaluation: 2/3/4 in a row, open ends, threats, board control (7.7) | `evaluate()`, `PATTERNS`, `move_score()` in `agents.py` |
+| Candidate move generation (7.8) | `candidate_cells()` / `generate_moves()`: 225 cells → ~10-40 |
+| AI decision process (7.9) | `Agent.choose_move()` + live **AI decision** panel in the GUI |
+| Difficulty levels (7.10) | Easy / Medium / Hard / **Expert** dropdown |
+| Game analysis: missed wins, failed defence, strong moves (7.11) | `gomoku_coach.py`, `gomoku_ml_coach.py`, post-game summary window |
+| Data collection: timestamp, player, move, board state, duration, difficulty, AI decision info, result (8) | `games/*.csv`, `results/tournament_moves.csv` |
+| Benchmark strategies against each other (Objectives) | `benchmark.py` → `results/` CSVs and charts |
+| Data analysis with Pandas / Jupyter (9) | `analysis/gomoku_analysis.ipynb` |
+| AI-vs-AI games (Future scope) | **AI Vs AI** page (`ai_vs_ai.py`) and the tournament |
+| Testing (Phase 10) | `tests/test_agents.py` (32 tests) |
 
 ---
 
@@ -38,12 +86,15 @@ A full-featured **Gomoku (Five-in-a-Row) game** with intelligent AI opponent, re
 - **Win Detection** - Automatic 5-in-a-row detection
 
 ### AI & Strategy
-- **Three AI Difficulty Levels**:
-  - **Easy**: Random valid moves
-  - **Medium**: Tactical play with depth-3 search
-  - **Hard**: Strategic play with depth-5 minimax search
-- **Advanced Evaluation**: Threats, patterns, and board control assessment
-- **Smart Candidate Generation**: Focuses on moves near existing pieces
+- **Four difficulty levels**, each a different AI technique:
+  - **Easy**: Random agent (uninformed baseline)
+  - **Medium**: Rule-based tactical agent
+  - **Hard**: Minimax with alpha-beta pruning, depth 3, move ordering
+  - **Expert**: Iterative deepening alpha-beta with a Zobrist transposition table (2 s per move)
+- **Pattern-based heuristic**: fives, open/closed fours, open/closed threes, twos, plus tactical rules
+- **Candidate move generation**: only cells within 2 of a stone, ranked by attack + defence value
+- **Explainable moves**: the AI panel shows states searched, depth, time and the reason for each move
+- **AI Vs AI mode** and a **benchmark tool** for experiments
 
 ### Coaching & Analysis
 - **Rule-based Game Analysis**:
@@ -154,10 +205,19 @@ You can now run: python main.py
 python main.py
 ```
 
-The GUI will open showing the home page with three options:
-1. **Single Player** - Play against the AI
-2. **Player vs Player** - Local multiplayer
-3. **How To Play** - View game rules and tutorials
+The home page offers **Single Player**, **Player vs Player**, **AI Vs AI** and **How To Play**.
+
+### Run the experiments
+```bash
+python benchmark.py --quick        # about 1-2 minutes
+python benchmark.py                # full run used for the report (a few minutes)
+```
+Results (CSV + PNG charts) are written to `results/`. Open `analysis/gomoku_analysis.ipynb` for the analysis.
+
+### Run the tests
+```bash
+python -m pytest -q
+```
 
 ---
 
@@ -173,7 +233,7 @@ The GUI will open showing the home page with three options:
 
 **Workflow:**
 1. Click "Single Player" from home
-2. Select difficulty (Easy/Medium/Hard)
+2. Select difficulty (Easy/Medium/Hard/Expert)
 3. Place black stones (you always go first)
 4. Computer responds with white stones
 5. Game ends when someone gets 5-in-a-row
@@ -181,7 +241,7 @@ The GUI will open showing the home page with three options:
 
 **Tips:**
 - Use suggestions liberally to learn strategy
-- Try Hard difficulty for maximum challenge
+- Try Expert difficulty for maximum challenge
 - Play multiple games to improve your ranking
 
 ### Player vs Player
@@ -251,42 +311,93 @@ Anti-diagonal: ●
 
 ## 🤖 AI Difficulty Levels
 
-### Easy
-- **Strategy**: Random valid moves from candidates
-- **Search Depth**: None (no lookahead)
-- **Best For**: Learning basic rules
-- **Skill Level**: Beginner
-- **Decision Time**: ~10ms
+| Level | Agent | Technique | Type of search |
+|---|---|---|---|
+| Easy | `RandomAgent` | Any legal move | Uninformed |
+| Medium | `RuleBasedAgent` | Fixed tactical rules, 1-ply | Goal-based agent |
+| Hard | `AlphaBetaAgent(depth=3)` | Minimax + alpha-beta + move ordering | Informed adversarial search |
+| Expert | `ExpertAgent` | Iterative deepening + transposition table, 2 s budget | Informed, utility-based |
 
-### Medium
-- **Strategy**: Minimax with depth-3 search
-- **Evaluation**: Threat assessment, board control scoring
-- **Best For**: Intermediate players practicing strategy
-- **Skill Level**: Intermediate
-- **Decision Time**: ~500ms-1s
+`MinimaxAgent` (no pruning) is also available in AI Vs AI mode and in the benchmark, to show what
+pruning saves.
 
-### Hard
-- **Strategy**: Minimax with depth-5 search + alpha-beta pruning
-- **Evaluation**: Advanced threat detection, pattern recognition
-- **Best For**: Advanced players seeking challenge
-- **Skill Level**: Advanced
-- **Decision Time**: ~2-5s
+### Rule-Based agent (rules in priority order)
+1. Win immediately
+2. Block the opponent's five
+3. Create an open four
+4. Create a fork (four-three or double three)
+5. Block the opponent's open three or fork
+6. Otherwise play the cell with the best attack + defence value
 
-### AI Decision Algorithm
+### Search-based agents: decision process
 ```
-1. Generate candidate moves (moves near existing stones)
-2. For each candidate, evaluate:
-   - Can I win immediately?
-   - Can opponent win next move? (Block if yes)
-   - How many threats does this create?
-   - What's the board control score?
-3. Score each move based on evaluation
-4. Apply difficulty filter:
-   - Easy: Random selection
-   - Medium: Top moves + some randomness
-   - Hard: Deterministic best move
-5. Execute selected move
+1. Perceive the board (copy of the 15x15 state)
+2. Generate candidates: empty cells within 2 of a stone
+   - a winning move is played at once
+   - if the opponent threatens five, only blocking cells are kept
+   - otherwise rank by move_score (attack + 0.9 x defence) and keep the best N
+3. Minimax over those candidates to depth d
+   - leaves scored by the pattern heuristic evaluate()
+   - alpha-beta prunes branches that cannot change the decision
+   - Expert: iterative deepening (d = 1, 2, 3 ...) until time runs out,
+     transposition table to reuse positions reached by different move orders
+4. Play the move with the highest minimax value and report statistics
 ```
+
+### Heuristic evaluation
+Each row, column and diagonal is turned into a string (`X` own stone, `.` empty, `#` blocked) and
+patterns are counted:
+
+| Pattern | Example | Weight |
+|---|---|---|
+| Five | `XXXXX` | 1,000,000 |
+| Open four | `.XXXX.` | 100,000 |
+| Four | `XXXX.`, `XX.XX` | 10,000 |
+| Open three | `.XXX..`, `.XX.X.` | 3,000 |
+| Closed three | `XXX..`, `X.X.X` | 300 |
+| Open two | `..XX..` | 50 |
+
+Score = own patterns − opponent patterns, with tactical rules for the side to move (a four wins
+next move, an open four cannot be stopped).
+
+---
+
+## 🧪 Experiments & Results
+
+Produced by `python benchmark.py` (8 test positions; round robin, 4 games per pairing, colours
+alternating, random two-stone openings). Full data in `results/`, analysis in
+`analysis/gomoku_analysis.ipynb`.
+
+### 1. Search efficiency (same positions, same candidates, same heuristic)
+
+| Depth | Minimax states | Alpha-Beta (unordered) | Alpha-Beta (ordered) | Minimax time | Alpha-Beta (ordered) time |
+|---|---|---|---|---|---|
+| 1 | 10 | 10 | 10 | 6 ms | 6 ms |
+| 2 | 108 | 60 | 33 | 68 ms | 51 ms |
+| 3 | 958 | 328 | **150** | 1744 ms | **521 ms** |
+
+All three returned **the same minimax value on every position**: pruning never changes the
+decision. At depth 3, ordered alpha-beta explores **84% fewer states** and is about **3.3x faster**.
+
+![States explored](results/search_efficiency.png)
+
+### 2. Tournament
+
+| Agent | W | L | Win % | ms / move | states / move |
+|---|---|---|---|---|---|
+| Alpha-Beta d3 | 12 | 4 | 75% | 271 | 143 |
+| Expert (ID + TT, 1 s) | 12 | 4 | 75% | 802 | 460 |
+| Rule-Based | 9 | 7 | 56% | 32 | 69 |
+| Minimax d2 | 7 | 9 | 44% | 94 | 82 |
+| Random | 0 | 16 | 0% | 0.1 | n/a |
+
+![Head to head](results/head_to_head.png)
+
+**Findings.** The uninformed Random agent never wins, and any domain knowledge beats it. Informed
+search with pruning (Alpha-Beta, Expert) is the strongest. Expert searches about 3x more states but
+did not beat fixed-depth alpha-beta overall, which shows that heuristic quality matters as much as
+search depth. The sample is small (4 games per pairing), so differences between neighbouring agents
+are not statistically significant.
 
 ---
 
@@ -348,40 +459,27 @@ Check Win Condition
 
 ```
 Gomuku/
-├── main.py                      # Entry point, home page GUI
-├── single_player.py             # Single player vs AI game mode
-├── player_vs_player.py          # Local multiplayer mode
-├── how_to_play.py              # Tutorial and rules page
+├── main.py                 # Entry point, home page
+├── single_player.py        # Human vs AI (difficulty, AI decision panel, undo, CSV logging)
+├── player_vs_player.py     # Local two-player mode
+├── ai_vs_ai.py             # Watch two agents play, live search statistics
+├── how_to_play.py          # Rules and tutorial page
 │
-├── gomoku_ai.py                 # Core AI algorithms
-│   ├── Board analysis
-│   ├── Minimax search
-│   ├── Threat detection
-│   └── Move evaluation
+├── agents.py               # AI engine: rules, heuristic, Random / Rule-Based / Minimax /
+│                           #   Alpha-Beta / Expert agents, difficulty presets
+├── gomoku_ai.py            # Original search + move-suggestion engine (used by hints)
+├── suggestion_overlay.py   # Move-suggestion overlay UI
+├── gomoku_coach.py         # Rule-based post-game analysis
+├── gomoku_ml_coach.py      # XGBoost post-game coaching (optional)
 │
-├── gomoku_coach.py              # Rule-based game analysis
-│   ├── Move analysis
-│   ├── Mistake detection
-│   └── Feedback generation
+├── benchmark.py            # Experiments: search efficiency + round-robin tournament
+├── results/                # Benchmark CSVs and charts
+├── analysis/               # Jupyter notebook analysing results/ and games/
+├── tests/                  # pytest unit tests
+├── games/                  # Recorded human games (CSV)
 │
-├── gomoku_ml_coach.py           # ML-powered coaching
-│   ├── Feature extraction
-│   ├── Model training
-│   └── Prediction & feedback
-│
-├── suggestion_overlay.py        # Real-time move suggestions UI
-│
-├── check_dependencies.py        # Dependency verification script
-├── requirements.txt             # Python package dependencies
-│
-├── games/                       # Game history (auto-generated)
-│   ├── game_single_20251118_124236.csv
-│   ├── game_pvp_20251118_124236.csv
-│   └── ... (more game records)
-│
-├── __pycache__/                 # Python cache (auto-generated)
-│
-└── README.md                    # This file
+├── check_dependencies.py
+└── requirements.txt
 ```
 
 ---
@@ -549,15 +647,21 @@ Machine learning analysis on move patterns:
 
 ### Game Recording Format
 
-Each game saves to `games/game_single_TIMESTAMP.csv`:
+Each Single-Player game is saved to `games/game_single_TIMESTAMP.csv`. The first row holds the
+game metadata, then one row per move:
 
 ```csv
-move_number,player_color,row,col,board_state,difficulty,timestamp,move_quality
-1,black,7,7,"[[None]*15 for _ in range(15)]",Hard,2025-11-18 12:42:36.123456,None
-2,white,8,8,"[[None,...],...]",Hard,2025-11-18 12:42:40.456789,score
-3,black,6,6,"[[None,...],...]",Hard,2025-11-18 12:42:45.789123,win
-...
+mode,winner,started_at
+single_player,Computer,2026-11-05T18:48:12
+
+move_no,player,row,col,elapsed_seconds,good_move,missed_win,missed_block,weak_edge,low_value,risky_move,forced_move,difficulty,ai_engine,ai_nodes,ai_depth,ai_time_ms,ai_reason,board_state
+1,black,7,7,3,0,0,0,0,0,0,0,Hard,,,,,,......(225 chars)
+2,white,6,6,3,0,0,0,0,0,0,0,Hard,Alpha-Beta,285,3,359.6,Positional / board control,......
 ```
+
+`board_state` is the board after the move as 225 characters (`.` empty, `b` black, `w` white,
+row by row). The `ai_*` columns record the AI's decision information. The benchmark writes the same
+kind of per-move data for AI-vs-AI games to `results/tournament_moves.csv`.
 
 ### Data Usage
 
