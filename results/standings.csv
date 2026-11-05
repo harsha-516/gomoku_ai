@@ -1,0 +1,6 @@
+agent,played,wins,draws,losses,win_rate,avg_ms_per_move,avg_states_per_move
+Alpha-Beta d3,16,12,0,4,0.75,271.1,143.2
+Expert,16,12,0,4,0.75,802.4,459.8
+Rule-Based,16,9,0,7,0.562,32.2,68.8
+Minimax d2,16,7,0,9,0.438,94.0,81.7
+Random,16,0,0,16,0.0,0.1,219.9
