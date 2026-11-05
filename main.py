@@ -2,8 +2,9 @@ import tkinter as tk
 from tkinter import font as tkfont
 
 class GomokuHomePage:
-    def __init__(self, root, single_player_callback, pvp_callback, how_to_play_callback):
+    def __init__(self, root, single_player_callback, pvp_callback, how_to_play_callback, ai_vs_ai_callback=None):
         self.root = root
+        self.ai_vs_ai_callback = ai_vs_ai_callback
         self.single_player_callback = single_player_callback
         self.pvp_callback = pvp_callback
         self.how_to_play_callback = how_to_play_callback
@@ -47,6 +48,7 @@ class GomokuHomePage:
             ("Home", None),
             ("Single Player", self.single_player_callback),
             ("Player Vs Player", self.pvp_callback),
+            ("AI Vs AI", self.ai_vs_ai_callback),
             ("How To Play", self.how_to_play_callback)
         ]
         for btn_text, cmd in nav_buttons:
@@ -54,10 +56,10 @@ class GomokuHomePage:
                           font=("Arial", 12, "bold"),
                           bg="#e3f2fd", fg="#1a1a1a",
                           relief=tk.FLAT, cursor="hand2",
-                          padx=20, pady=10,
+                          padx=12, pady=10,
                           borderwidth=0,
                           command=cmd)
-            btn.pack(side=tk.LEFT, padx=10)
+            btn.pack(side=tk.LEFT, padx=6)
             if btn_text == "Home":
                 btn.config(font=("Arial", 12, "bold underline"))
             else:
@@ -113,6 +115,18 @@ class GomokuHomePage:
         pvp_btn.pack(side=tk.LEFT)
         pvp_btn.bind("<Enter>", lambda e: pvp_btn.config(bg="#37474f"))
         pvp_btn.bind("<Leave>", lambda e: pvp_btn.config(bg="#455a64"))
+
+        # AI vs AI button
+        ai_btn = tk.Button(buttons_frame, text="🤖 AI Vs AI",
+                           font=("Arial", 14, "bold"),
+                           bg="#1baf7a", fg="white",
+                           relief=tk.FLAT, cursor="hand2",
+                           padx=30, pady=15,
+                           borderwidth=0,
+                           command=self.ai_vs_ai_callback)
+        ai_btn.pack(side=tk.LEFT, padx=(20, 0))
+        ai_btn.bind("<Enter>", lambda e: ai_btn.config(bg="#15905f"))
+        ai_btn.bind("<Leave>", lambda e: ai_btn.config(bg="#1baf7a"))
         
         # Right side - Board image
         right_frame = tk.Frame(main_frame, bg="#f0f4f8")
@@ -222,7 +236,8 @@ class GomokuApp:
         self.show_home_page()
     
     def show_home_page(self):
-        self.home_page = GomokuHomePage(self.root, self.open_single_player, self.open_player_vs_player, self.open_how_to_play)
+        self.home_page = GomokuHomePage(self.root, self.open_single_player, self.open_player_vs_player,
+                                        self.open_how_to_play, self.open_ai_vs_ai)
     
     def open_single_player(self):
         # Destroy current home page if present
@@ -273,6 +288,22 @@ class GomokuApp:
             self.open_how_to_play,
         )
     
+    def open_ai_vs_ai(self):
+        if hasattr(self, 'home_page') and self.home_page:
+            try:
+                self.home_page.destroy()
+            except Exception:
+                pass
+            self.home_page = None
+        import ai_vs_ai
+        ai_vs_ai.AIvsAIPage(
+            self.root,
+            self.back_to_home,
+            self.open_single_player,
+            self.open_player_vs_player,
+            self.open_how_to_play,
+        )
+
     def back_to_home(self):
         self.show_home_page()
 
