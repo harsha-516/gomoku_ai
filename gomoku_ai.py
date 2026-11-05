@@ -292,13 +292,6 @@ def ai_search(state: State, ai_color: str, opp_color: str, depth: int = 2, use_a
     beta = 10**9
     oc = ordered_candidates(state, ai_color)
     
-    # Debug: Check for blocks and defensive moves in ordered candidates
-    blocks_in_oc = [m for m in oc if try_move_is_win(state, m[0], m[1], opp_color)]
-    defensive_in_oc = [m for m in oc if m not in blocks_in_oc and is_open_threat(state, m[0], m[1], opp_color, min_count=3)]
-    if blocks_in_oc:
-        print(f"[DEBUG] Found {len(blocks_in_oc)} blocking moves: {blocks_in_oc[:3]}")
-    if defensive_in_oc:
-        print(f"[DEBUG] Found {len(defensive_in_oc)} defensive moves (3+ threats): {defensive_in_oc[:3]}")
     
     # CRITICAL: Never prune wins, blocks, or defensive moves - only limit the "rest" candidates
     if max_candidates is not None:
@@ -309,7 +302,6 @@ def ai_search(state: State, ai_color: str, opp_color: str, depth: int = 2, use_a
         # Keep all wins, blocks, and defensive moves, but limit rest
         remaining_slots = max(0, max_candidates - len(wins) - len(blocks) - len(defensive))
         oc = wins + blocks + defensive + rest[:remaining_slots]
-        print(f"[DEBUG] After pruning: {len(wins)} wins, {len(blocks)} blocks, {len(defensive)} defensive, {len(rest[:remaining_slots])} rest")
     
     for r, c in oc:
         state[r][c] = ai_color
@@ -324,9 +316,6 @@ def ai_search(state: State, ai_color: str, opp_color: str, depth: int = 2, use_a
             if alpha >= beta:
                 break
     
-    # Debug: Show selected move
-    is_block = best_move and try_move_is_win(state, best_move[0], best_move[1], opp_color)
-    print(f"[DEBUG] Selected move: {best_move}, score: {best_score}, is_block: {is_block}")
     
     return best_move
 
