@@ -9,6 +9,9 @@ scikit-learn>=0.24.0
 xgboost>=1.5.0          # optional - the game runs without it, ML coaching is then disabled
 python-dateutil>=2.8.0
 
+# Web interface (python web_app.py)
+flask>=3.0.0
+
 # Benchmark charts, tests and analysis notebook
 matplotlib>=3.5.0
 pytest>=7.0.0

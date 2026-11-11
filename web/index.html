@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gomoku Five in a Row</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23222'/><circle cx='38' cy='38' r='10' fill='%23666'/></svg>">
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span>
+  </div>
+
+  <header class="topbar">
+    <button class="logo" data-go="home" aria-label="Home">
+      <span class="logo-stones"><i class="mini black"></i><i class="mini white"></i></span>
+      <span>Gomoku<small>Five in a Row</small></span>
+    </button>
+    <nav class="topnav">
+      <button data-go="levels">🗺️ Levels</button>
+      <button data-go="pick">🎮 Quick Play</button>
+      <button data-go="friend">👫 Friend</button>
+      <button data-go="watch">⚔️ Robot Battle</button>
+      <button data-go="lab">🧠 AI Lab</button>
+      <button data-go="learn">📖 How to Play</button>
+      <button id="soundBtn" class="icon-btn" aria-label="Toggle sound" title="Sound">🔊</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section id="screen-home" class="screen active">
+      <div class="hero">
+        <div class="hero-text">
+          <h1>Can you get <span class="five">five in a row?</span></h1>
+          <p>Line up 5 stones before the computer does. Each opponent uses a different kind of artificial intelligence, from guessing randomly to thinking many moves ahead.</p>
+          <div class="hero-buttons">
+            <button class="big-btn orange" id="continueBtn" hidden>▶️ Continue game</button>
+            <button class="big-btn primary" data-go="levels">🗺️ Adventure Levels</button>
+            <button class="big-btn green" data-go="pick">🎮 Quick Play</button>
+            <button class="big-btn purple" data-go="watch">⚔️ Robot Battle</button>
+            <button class="big-btn ghost" data-go="lab">🧠 AI Lab</button>
+          </div>
+          <p class="continue-info" id="continueInfo" hidden></p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <svg viewBox="0 0 220 220" class="hero-board"></svg>
+          <div class="hero-friends"><span>🐣</span><span>🦇</span><span>🦊</span><span>🐢</span><span>🦉</span><span>🐉</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEVELS -->
+    <section id="screen-levels" class="screen">
+      <h2 class="screen-title">🗺️ Adventure Levels</h2>
+      <div class="progress-row">
+        <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+        <span id="progressText">0 / 10 levels</span>
+      </div>
+      <p class="screen-sub">Beat a level to unlock the next one. Every level teaches you one idea from Artificial Intelligence. Boards get bigger and opponents get smarter!</p>
+      <div class="level-grid" id="levelGrid"></div>
+      <div class="center"><button class="link" id="resetProgress">Reset my progress</button></div>
+    </section>
+
+    <!-- QUICK PLAY SETUP -->
+    <section id="screen-pick" class="screen">
+      <h2 class="screen-title">🎮 Quick Play</h2>
+      <div class="setup-row">
+        <div class="setup-item">
+          <span>Board size</span>
+          <div class="seg" role="radiogroup" aria-label="Board size" id="sizeSeg">
+            <button class="seg-btn" data-size="9" role="radio">9×9</button>
+            <button class="seg-btn" data-size="11" role="radio">11×11</button>
+            <button class="seg-btn" data-size="13" role="radio">13×13</button>
+            <button class="seg-btn active" data-size="15" role="radio" aria-checked="true">15×15</button>
+          </div>
+        </div>
+        <div class="setup-item">
+          <span>Who goes first?</span>
+          <div class="seg" role="radiogroup" aria-label="Who goes first">
+            <button class="seg-btn active" data-first="human" role="radio" aria-checked="true">⚫ Me</button>
+            <button class="seg-btn" data-first="ai" role="radio" aria-checked="false">⚪ Computer</button>
+          </div>
+        </div>
+      </div>
+      <h3 class="pick-title">Choose your opponent</h3>
+      <div class="cards" id="opponentCards"></div>
+    </section>
+
+    <!-- GAME -->
+    <section id="screen-game" class="screen">
+      <div class="game-bar">
+        <button class="bar-btn" id="backBtn" aria-label="Back to menu">← Back</button>
+        <div class="game-title" id="gameTitle">Quick Play</div>
+        <div class="timer" id="timer" aria-label="Game time">⏱ 00:00</div>
+        <button class="bar-btn pause" id="pauseBtn" aria-label="Pause">⏸ Pause</button>
+      </div>
+      <div class="game-layout">
+        <aside class="panel players">
+          <div class="player-card" id="pcBlack">
+            <div class="avatar" id="avBlack">🙂</div>
+            <div><div class="pname" id="nameBlack">You</div><div class="pcolor"><i class="mini black"></i> Black</div></div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="player-card" id="pcWhite">
+            <div class="avatar" id="avWhite">🦊</div>
+            <div><div class="pname" id="nameWhite">Foxy</div><div class="pcolor"><i class="mini white"></i> White</div></div>
+          </div>
+          <div class="turn-banner" id="turnBanner">Your turn!</div>
+          <div class="controls">
+            <button class="ctl" id="hintBtn">💡 Hint <span id="hintCount" class="badge">3</span></button>
+            <button class="ctl" id="undoBtn">↩️ Undo</button>
+            <button class="ctl" id="newBtn">🔄 Restart</button>
+          </div>
+        </aside>
+
+        <div class="board-wrap">
+          <div class="board-box">
+            <svg id="board" viewBox="0 0 640 640" role="grid" aria-label="Gomoku board"></svg>
+            <div class="paused-cover" id="pausedCover" hidden>⏸</div>
+          </div>
+          <div class="move-count" id="moveCount">Move 0</div>
+        </div>
+
+        <aside class="panel brain" id="brainPanel">
+          <div class="bubble" id="bubble">
+            <div class="bubble-face" id="bubbleFace">🦊</div>
+            <div class="bubble-text" id="bubbleText">Hi! Put a stone anywhere to start.</div>
+          </div>
+          <h3>🧠 How the computer thought</h3>
+          <ul class="brain-stats" id="brainStats">
+            <li><b id="bsBoards">–</b><span>boards looked at</span></li>
+            <li><b id="bsDepth">–</b><span>moves ahead</span></li>
+            <li><b id="bsTime">–</b><span>thinking time</span></li>
+          </ul>
+          <div class="agent-tags" id="agentTags"></div>
+          <p class="tech" id="bsTech">The AI's search statistics appear here after each move.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- WATCH (AI vs AI) -->
+    <section id="screen-watch" class="screen">
+      <div class="game-layout">
+        <aside class="panel">
+          <h3>🤖 Robot 1</h3>
+          <select id="watchA" class="select"></select>
+          <h3>🤖 Robot 2</h3>
+          <select id="watchB" class="select"></select>
+          <label class="slider">Board <select id="watchSize" class="select inline"><option value="9">9×9</option><option value="11">11×11</option><option value="13">13×13</option><option value="15" selected>15×15</option></select></label>
+          <label class="slider">Opening <select id="watchOpening" class="select inline">
+            <option value="3" selected>Random 3 stones (fairest)</option>
+            <option value="2">Random 2 stones</option>
+            <option value="0">Empty board</option>
+          </select></label>
+          <label class="check"><input type="checkbox" id="watchSwap" checked> Swap colours every game</label>
+          <p class="small">In Gomoku the player who moves first (Black) has a real advantage. To compare robots fairly, they take turns being Black, and each opening is played twice, once with each robot as Black.</p>
+          <label class="slider">Speed <input type="range" id="watchSpeed" min="0" max="1200" step="100" value="400"></label>
+          <label class="slider">Games <select id="watchGames" class="select inline"><option>1</option><option>3</option><option selected>5</option><option>10</option><option>20</option></select></label>
+          <div class="controls">
+            <button class="ctl primary" id="watchStart">▶️ Start</button>
+            <button class="ctl" id="watchPause">⏸️ Pause</button>
+            <button class="ctl" id="watchReset">🔁 Reset</button>
+          </div>
+        </aside>
+
+        <div class="board-wrap">
+          <svg id="watchBoard" viewBox="0 0 640 640" aria-label="Robot battle board"></svg>
+          <div class="move-count" id="watchStatus">Pick two robots and press Start</div>
+        </div>
+
+        <aside class="panel">
+          <h3>🏆 Wins by robot</h3>
+          <div class="score">
+            <div><span id="scAFace">🦊</span><b id="scA">0</b><small id="scAName">Robot 1</small></div>
+            <div><span id="scBFace">🦉</span><b id="scB">0</b><small id="scBName">Robot 2</small></div>
+            <div><span>🤝</span><b id="scDraw">0</b><small>Draws</small></div>
+          </div>
+          <h3>🎨 Wins by colour</h3>
+          <div class="score two">
+            <div><span class="mini black"></span><b id="scBlack">0</b><small>Black wins</small></div>
+            <div><span class="mini white"></span><b id="scWhite">0</b><small>White wins</small></div>
+          </div>
+          <p class="small" id="colourNote"></p>
+          <div class="robot-stats" id="watchStats"></div>
+          <button class="link" id="scoreReset">Clear scoreboard</button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- AI LAB -->
+    <section id="screen-lab" class="screen">
+      <h2 class="screen-title">🧠 AI Lab: how the robots think</h2>
+      <p class="screen-sub">Every idea below is running for real inside this game. Try the experiments!</p>
+      <div class="lab-tabs" role="tablist">
+        <button class="lab-tab active" data-lab="agent" role="tab">🤖 Agent</button>
+        <button class="lab-tab" data-lab="env" role="tab">🌍 Environment</button>
+        <button class="lab-tab" data-lab="types" role="tab">🧩 Agent types</button>
+        <button class="lab-tab" data-lab="search" role="tab">🔎 Search</button>
+        <button class="lab-tab" data-lab="space" role="tab">📈 States vs size</button>
+        <button class="lab-tab" data-lab="heur" role="tab">⚖️ Heuristic</button>
+      </div>
+
+      <div class="lab-panel active" id="lab-agent">
+        <div class="lab-two">
+          <div class="panel">
+            <h3>What is an agent?</h3>
+            <p>An <b>agent</b> perceives its <b>environment</b> through <b>sensors</b> and acts on it through <b>actuators</b> to reach a <b>goal</b>. Every robot in this game repeats the same loop:</p>
+            <div class="loop">
+              <div class="loop-step"><span>👀</span><b>Perceive</b><small>read the board</small></div>
+              <div class="loop-arrow">➜</div>
+              <div class="loop-step"><span>🧠</span><b>Decide</b><small>search and evaluate</small></div>
+              <div class="loop-arrow">➜</div>
+              <div class="loop-step"><span>✋</span><b>Act</b><small>place a stone</small></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>PEAS description of our Gomoku agent</h3>
+            <table class="lab-table">
+              <tr><th>Performance</th><td>Win (five in a row), stop the opponent's five, decide quickly</td></tr>
+              <tr><th>Environment</th><td>The board (9×9 to 15×15) and the opponent</td></tr>
+              <tr><th>Actuators</th><td>Placing a stone on an empty crossing</td></tr>
+              <tr><th>Sensors</th><td>Reading every cell of the board (empty, black or white)</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="panel vacuum">
+          <h3>🧹 Compare: the vacuum-cleaner world</h3>
+          <table class="lab-table">
+            <tr><th></th><th>Vacuum cleaner agent</th><th>Gomoku agent</th></tr>
+            <tr><th>Percept</th><td>[Location, Dirty or Clean]</td><td>The whole board</td></tr>
+            <tr><th>Actions</th><td>Suck, Left, Right</td><td>Place a stone on any empty cell</td></tr>
+            <tr><th>Goal</th><td>All squares clean</td><td>Five stones in a row</td></tr>
+            <tr><th>State space</th><td>2 squares × 2^2 dirt = 8 states</td><td>Up to 3^225 boards on 15×15</td></tr>
+            <tr><th>Opponent?</th><td>No (single agent)</td><td>Yes, adversarial (multi-agent)</td></tr>
+          </table>
+          <p class="small">Same perceive → decide → act cycle, but Gomoku has a huge, adversarial state space. That's why it needs search and heuristics.</p>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="lab-env">
+        <div class="env-grid">
+          <div class="env"><b>👁️ Fully observable</b><span>not partially observable</span><p>Both players see the whole board at all times.</p></div>
+          <div class="env"><b>🎯 Deterministic</b><span>not stochastic</span><p>Placing a stone always gives the same next board, with no dice and no luck.</p></div>
+          <div class="env"><b>🔗 Sequential</b><span>not episodic</span><p>Every move changes what is possible later.</p></div>
+          <div class="env"><b>⏸️ Static</b><span>not dynamic</span><p>The board does not change while the agent is thinking.</p></div>
+          <div class="env"><b>🔢 Discrete</b><span>not continuous</span><p>A finite number of cells, moves and board positions.</p></div>
+          <div class="env"><b>⚔️ Multi-agent, adversarial</b><span>not single agent</span><p>The opponent's goal is the exact opposite of ours.</p></div>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="lab-types">
+        <div class="panel">
+          <h3>Which kind of agent is each robot?</h3>
+          <table class="lab-table" id="agentTable"><tr><td>Loading…</td></tr></table>
+          <p class="small"><b>Simple reflex</b>: reacts without a goal. <b>Goal-based</b>: chooses actions that reach the goal (five in a row). <b>Utility-based</b>: gives every board a number (utility) with the heuristic function and picks the best one.</p>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="lab-search">
+        <div class="panel">
+          <h3>Uninformed vs informed search: live experiment</h3>
+          <p><b>Uninformed (blind)</b> search has no domain knowledge: it tries every empty cell and only recognises win or loss. <b>Informed</b> search uses a <b>heuristic function</b> and <b>candidate move generation</b> to look only at promising moves. Pick a board size and run all four searches on the same position (2 moves ahead):</p>
+          <div class="lab-controls">
+            <select id="cmpSize" class="select inline"><option value="9">9×9</option><option value="11">11×11</option><option value="13">13×13</option><option value="15" selected>15×15</option></select>
+            <button class="ctl primary" id="cmpRun">▶️ Run experiment</button>
+          </div>
+          <div id="cmpOut" class="bars"></div>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="lab-space">
+        <div class="panel">
+          <h3>The number of states depends on the size of the problem</h3>
+          <p>There is no external dataset. The "data" is every board the agent can reach, and it grows with the board size. Press measure to run blind and informed search on each size:</p>
+          <div class="lab-controls"><button class="ctl primary" id="spaceRun">📏 Measure all sizes</button></div>
+          <table class="lab-table" id="spaceTable">
+            <tr><th>Board</th><th>Cells</th><th>Possible boards (upper bound 3<sup>cells</sup>)</th><th>Blind search (states)</th><th>Alpha-Beta (states)</th></tr>
+          </table>
+          <p class="small">Blind search grows roughly with cells² for each 2-move look-ahead. Informed search stays almost the same, because it only considers cells near existing stones.</p>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="lab-heur">
+        <div class="lab-two">
+          <div class="panel">
+            <h3>Build a position</h3>
+            <div class="seg small-seg" role="radiogroup" aria-label="Stone colour">
+              <button class="seg-btn active" data-heur="black">⚫ Black</button>
+              <button class="seg-btn" data-heur="white">⚪ White</button>
+              <button class="seg-btn" data-heur="erase">🧽 Erase</button>
+            </div>
+            <svg id="heurBoard" viewBox="0 0 400 400" aria-label="Heuristic playground board"></svg>
+            <button class="link" id="heurClear">Clear board</button>
+          </div>
+          <div class="panel">
+            <h3>The heuristic function scores it</h3>
+            <div class="meter"><div class="meter-fill" id="heurMeter"></div><span class="meter-mid"></span></div>
+            <p class="meter-label" id="heurVerdict">Place some stones to see the score.</p>
+            <div id="heurTable"></div>
+            <p class="small">score = Black's pattern points − White's pattern points. The search agents use this number to compare boards without playing to the end.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEARN -->
+    <section id="screen-learn" class="screen">
+      <h2 class="screen-title">How to play</h2>
+      <div class="learn-grid" id="learnGrid"></div>
+      <div class="keys panel">
+        <h3>⌨️ Keyboard shortcuts</h3>
+        <p><kbd>P</kbd> or <kbd>Esc</kbd> pause / resume · <kbd>H</kbd> hint · <kbd>U</kbd> undo · <kbd>R</kbd> restart</p>
+      </div>
+      <div class="center"><button class="big-btn primary" data-go="levels">Let's play! 🎮</button></div>
+    </section>
+  </main>
+
+  <!-- PAUSE MENU -->
+  <div class="modal" id="pauseMenu" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
+    <div class="modal-card small-card">
+      <div class="modal-face">⏸️</div>
+      <h2 id="pauseTitle">Paused</h2>
+      <p id="pauseInfo"></p>
+      <div class="menu-buttons">
+        <button class="big-btn primary" id="resumeBtn">▶️ Resume</button>
+        <button class="big-btn ghost" id="pRestartBtn">🔄 Restart</button>
+        <button class="big-btn ghost" id="pSoundBtn">🔊 Sound: on</button>
+        <button class="big-btn ghost" id="pHelpBtn">📖 How to play</button>
+        <button class="big-btn ghost danger" id="pExitBtn">🚪 Exit to menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM -->
+  <div class="modal" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
+    <div class="modal-card small-card">
+      <h2 id="confirmTitle">Are you sure?</h2>
+      <p id="confirmText"></p>
+      <div class="modal-buttons">
+        <button class="big-btn primary" id="confirmYes">Yes</button>
+        <button class="big-btn ghost" id="confirmNo">No</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-face" id="modalFace">🎉</div>
+      <h2 id="modalTitle">You won!</h2>
+      <div class="stars" id="modalStars"></div>
+      <p id="modalSub"></p>
+      <div class="modal-buttons">
+        <button class="big-btn orange" id="nextLevelBtn" hidden>Next level ▶</button>
+        <button class="big-btn primary" id="againBtn">Play again</button>
+        <button class="big-btn ghost" id="reviewBtn">See the board</button>
+        <button class="big-btn ghost" id="menuBtn">Menu</button>
+      </div>
+      <div class="learned" id="modalLearned" hidden></div>
+      <div class="report" id="modalReport"></div>
+    </div>
+  </div>
+
+  <canvas id="confetti" aria-hidden="true"></canvas>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
