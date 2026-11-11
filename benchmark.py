@@ -33,7 +33,7 @@ from datetime import datetime
 from typing import Dict, List
 
 from agents import (
-    AlphaBetaAgent, ExpertAgent, MinimaxAgent, RandomAgent, RuleBasedAgent,
+    AlphaBetaAgent, BlindMinimaxAgent, ExpertAgent, MinimaxAgent, RandomAgent, RuleBasedAgent,
     empty_board, is_five, is_full, other,
 )
 
@@ -173,6 +173,33 @@ def play_game(black, white, seed: int, game_id: int, move_rows: List[Dict]) -> D
         "black_avg_nodes": avg([s.nodes for s in stats["black"]]),
         "white_avg_nodes": avg([s.nodes for s in stats["white"]]),
     }
+
+
+# ----------------------------------------------------------------------------
+# Experiment 3: state space vs board size (uninformed vs informed search)
+# ----------------------------------------------------------------------------
+
+def run_state_space(sizes=(7, 9, 11, 13, 15)) -> List[Dict]:
+    """Same small opening on boards of different sizes, depth-2 search.
+
+    Blind (uninformed) minimax must consider every empty cell, so the states it
+    explores grow with the board (about n^2 x n^2). Informed search only looks
+    near the stones, so its cost stays almost flat.
+    """
+    print("\n=== Experiment 3: states explored vs board size (depth 2) ===")
+    rows = []
+    for n in sizes:
+        state = empty_board(n)
+        c = n // 2
+        state[c][c], state[c][c + 1], state[c + 1][c] = "black", "white", "black"
+        for name, agent in (("Blind Minimax (uninformed)", BlindMinimaxAgent(depth=2, node_limit=10**7, seed=1)),
+                            ("Minimax (informed)", MinimaxAgent(depth=2, max_candidates=10)),
+                            ("Alpha-Beta (informed)", AlphaBetaAgent(depth=2, max_candidates=10))):
+            agent.choose_move(state, "white")
+            rows.append({"board": f"{n}x{n}", "cells": n * n, "algorithm": name, "nodes": agent.stats.nodes,
+                         "time_ms": round(agent.stats.time_ms, 1)})
+        print(f"  {n:>2}x{n:<2}: " + " | ".join(f"{r['algorithm']}: {r['nodes']:,}" for r in rows[-3:]))
+    return rows
 
 
 def run_tournament(games_per_pair: int, expert_time: float):
@@ -336,6 +363,31 @@ def make_charts(eff_rows, roster, games, table) -> None:
     print("  charts saved to", RESULTS_DIR + "/")
 
 
+def make_state_space_chart(rows) -> None:
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    fig, ax = plt.subplots(figsize=(8, 5), facecolor=SURFACE)
+    algos = list(dict.fromkeys(r["algorithm"] for r in rows))
+    for i, name in enumerate(algos):
+        pts = [r for r in rows if r["algorithm"] == name]
+        xs, ys = [r["cells"] for r in pts], [r["nodes"] for r in pts]
+        ax.plot(xs, ys, color=COLORS[i], linewidth=2, marker="o", markersize=8, label=name)
+        ax.annotate(f"{ys[-1]:,}", (xs[-1], ys[-1]), xytext=(8, 0), textcoords="offset points",
+                    va="center", color=INK, fontsize=9)
+    ax.set_yscale("log")
+    ax.set_xticks([r["cells"] for r in rows if r["algorithm"] == algos[0]],
+                  [r["board"] for r in rows if r["algorithm"] == algos[0]])
+    _style(ax, "States explored vs board size (depth 2, log scale)", "Board size", "States explored")
+    ax.legend(frameon=False, labelcolor=INK)
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS_DIR, "state_space.png"), dpi=150)
+    plt.close(fig)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Benchmark the Gomoku AI agents")
     ap.add_argument("--games", type=int, default=4, help="games per pairing (default 4)")
@@ -345,6 +397,7 @@ def main():
     ap.add_argument("--quick", action="store_true", help="small, fast run")
     ap.add_argument("--skip-efficiency", action="store_true")
     ap.add_argument("--skip-tournament", action="store_true")
+    ap.add_argument("--skip-state-space", action="store_true")
     args = ap.parse_args()
     if args.quick:
         args.games, args.positions, args.max_depth, args.expert_time = 2, 3, 2, 0.5
@@ -356,6 +409,11 @@ def main():
     if not args.skip_efficiency:
         eff_rows = run_efficiency(args.positions, args.max_depth)
         write_csv(os.path.join(RESULTS_DIR, "search_efficiency.csv"), eff_rows)
+
+    space_rows = []
+    if not args.skip_state_space:
+        space_rows = run_state_space()
+        write_csv(os.path.join(RESULTS_DIR, "state_space.csv"), space_rows)
 
     if not args.skip_tournament:
         roster, games, moves = run_tournament(args.games, args.expert_time)
@@ -370,6 +428,8 @@ def main():
                   f"{r['win_rate'] * 100:>6.0f}%{r['avg_ms_per_move']:>10.1f}{r['avg_states_per_move']:>13.1f}")
 
     make_charts(eff_rows, roster, games, table)
+    if space_rows:
+        make_state_space_chart(space_rows)
     print(f"\nDone ({stamp}).")
 
 

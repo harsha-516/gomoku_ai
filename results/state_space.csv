@@ -1,0 +1,16 @@
+board,cells,algorithm,nodes,time_ms
+7x7,49,Blind Minimax (uninformed),2116,4.8
+7x7,49,Minimax (informed),110,13.0
+7x7,49,Alpha-Beta (informed),29,9.9
+9x9,81,Blind Minimax (uninformed),6084,12.1
+9x9,81,Minimax (informed),110,26.7
+9x9,81,Alpha-Beta (informed),29,12.9
+11x11,121,Blind Minimax (uninformed),13924,18.8
+11x11,121,Minimax (informed),110,19.5
+11x11,121,Alpha-Beta (informed),29,12.2
+13x13,169,Blind Minimax (uninformed),27556,38.0
+13x13,169,Minimax (informed),110,19.8
+13x13,169,Alpha-Beta (informed),29,18.3
+15x15,225,Blind Minimax (uninformed),49284,62.3
+15x15,225,Minimax (informed),110,20.6
+15x15,225,Alpha-Beta (informed),29,12.6
