@@ -762,6 +762,32 @@ pip install pandas numpy xgboost scikit-learn python-dateutil
 
 ## 🐛 Troubleshooting
 
+### Issue: The web page shows a different app, or "address already in use"
+
+Another program is using the port. The game runs on port **8050** by default; open
+http://127.0.0.1:8050 (not 5000). To use a different port:
+
+```bash
+set PORT=8090
+python web_app.py
+```
+
+### Issue: "No module named 'flask'"
+
+```bash
+pip install flask
+```
+
+### Issue: "can't open file ... web_app.py"
+
+Run the command from the project folder (the one that contains `web_app.py`). If you cloned the
+repository earlier, update it first:
+
+```bash
+git fetch origin
+git reset --hard origin/main
+```
+
 ### Issue: "ModuleNotFoundError: No module named 'tkinter'"
 
 **Solution:**
