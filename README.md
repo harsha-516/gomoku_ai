@@ -37,7 +37,7 @@ Player vs Player mode, move suggestions and the rule-based / XGBoost post-game c
 | 15×15 board, alternating turns, win / draw detection (7.1, 7.2) | `agents.py` (rules), `single_player.py`, `player_vs_player.py` |
 | Random AI (7.3) | `RandomAgent` in `agents.py` (**Easy**) |
 | Rule-Based AI: win, block, deny threats, build patterns, counter-attack (7.4) | `RuleBasedAgent` (**Medium**), every move reports which rule fired |
-| Minimax (7.5) | `MinimaxAgent` (plain, no pruning, used in experiments) |
+| Minimax (7.5) | `MinimaxAgent` (heuristic, no pruning) and `BlindMinimaxAgent`: the **unguided, uninformed** minimax of section 5.3 (win/loss/draw only) |
 | Alpha-Beta Pruning (7.6) | `AlphaBetaAgent` (**Hard**), with and without move ordering |
 | Heuristic evaluation: 2/3/4 in a row, open ends, threats, board control (7.7) | `evaluate()`, `PATTERNS`, `move_score()` in `agents.py` |
 | Candidate move generation (7.8) | `candidate_cells()` / `generate_moves()`: 225 cells → ~10-40 |
@@ -47,8 +47,12 @@ Player vs Player mode, move suggestions and the rule-based / XGBoost post-game c
 | Data collection: timestamp, player, move, board state, duration, difficulty, AI decision info, result (8) | `games/*.csv`, `results/tournament_moves.csv` |
 | Benchmark strategies against each other (Objectives) | `benchmark.py` → `results/` CSVs and charts |
 | Data analysis with Pandas / Jupyter (9) | `analysis/gomoku_analysis.ipynb` |
-| AI-vs-AI games (Future scope) | **AI Vs AI** page (`ai_vs_ai.py`) and the tournament |
-| Testing (Phase 10) | `tests/test_agents.py` (32 tests) |
+| AI-vs-AI games (Future scope) | **Robot Battle** (web) and **AI Vs AI** (`ai_vs_ai.py`) pages, plus the tournament |
+| Agent & environment, PEAS, vacuum-world comparison (5.1, 5.2) | **AI Lab** in the web game: Agent, Environment and Agent-types tabs; each agent class declares its `agent_type` |
+| Uninformed vs informed search (5.3) | `BlindMinimaxAgent` vs `MinimaxAgent` / `AlphaBetaAgent`; live experiment in AI Lab → Search |
+| State space grows with problem size (5.4) | Boards from 9×9 to 15×15; benchmark experiment 3 (`results/state_space.png`); AI Lab → States vs size |
+| Heuristic function (7.7) | AI Lab → Heuristic: build a position and see every pattern, weight and the score |
+| Testing (Phase 10) | `tests/` (79 tests: rules, agents, board sizes, web API, analysis) |
 
 ---
 
@@ -206,6 +210,34 @@ python main.py
 ```
 
 The home page offers **Single Player**, **Player vs Player**, **AI Vs AI** and **How To Play**.
+
+### Play in the browser (kid-friendly web version)
+```bash
+python web_app.py
+```
+Then open **http://127.0.0.1:8050** (set the `PORT` environment variable to use another port).
+The browser only draws the board; every AI move is computed in Python (`web_app.py` calls `agents.py`).
+
+| Feature | What it does |
+|---|---|
+| 🗺️ **Adventure levels** | 10 levels from 9×9 to 15×15, one AI opponent and one AI idea per level; beat a level to unlock the next, earn up to 3 stars |
+| 🎮 **Quick Play** | pick any opponent, board size (9/11/13/15) and who moves first |
+| ⏸ **Pause menu** | Resume, Restart, Sound, How to play, Exit; the timer and the AI stop while paused |
+| ▶️ **Continue** | games are saved automatically; leave at any time and continue from the home screen |
+| ← **Back / Exit** | asks before leaving a game in progress |
+| 💡 Hints, ↩️ Undo, ⏱ timer | 3 hints per game; undo takes back your move and the AI's reply |
+| 🧠 **How the computer thought** | boards searched, depth, time, agent type and search type for every AI move |
+| 📊 Post-game report | stars, great moves, mistakes, danger moments and a tip |
+| 👫 Friend mode, ⚔️ Robot Battle | two players on one screen; any two AIs on any board size. Robots swap colours every game and each random opening is played twice (once with each robot as Black), so the scoreboard compares robots fairly and counts Black's first-move advantage separately |
+| 🧠 **AI Lab** | the AI theory behind the game, with live experiments (see below) |
+
+Keyboard: `P`/`Esc` pause, `H` hint, `U` undo, `R` restart. Games are saved to `games/web/`.
+
+**AI Lab tabs:** Agent (perceive-decide-act, PEAS, vacuum-world comparison) · Environment (fully
+observable, deterministic, sequential, static, discrete, adversarial) · Agent types (simple reflex /
+goal-based / utility-based for every robot) · Search (run blind and informed search on the same
+position) · States vs size (measure how the state space grows from 7×7 to 15×15) · Heuristic
+(build a position and watch the heuristic function score it).
 
 ### Run the experiments
 ```bash
@@ -381,7 +413,23 @@ decision. At depth 3, ordered alpha-beta explores **84% fewer states** and is ab
 
 ![States explored](results/search_efficiency.png)
 
-### 2. Tournament
+### 2. States vs board size: uninformed vs informed search (depth 2)
+
+| Board | Blind Minimax (uninformed) | Minimax (informed) | Alpha-Beta (informed) |
+|---|---|---|---|
+| 7×7 | 2,116 | 110 | 29 |
+| 9×9 | 6,084 | 110 | 29 |
+| 11×11 | 13,924 | 110 | 29 |
+| 13×13 | 27,556 | 110 | 29 |
+| 15×15 | 49,284 | 110 | 29 |
+
+The number of states an uninformed search must explore grows with the size of the problem (about
+cells² for a 2-move look-ahead). Candidate move generation and the heuristic keep informed search
+constant. There is no external dataset: the "data" is the state space itself.
+
+![States vs size](results/state_space.png)
+
+### 3. Tournament
 
 | Agent | W | L | Win % | ms / move | states / move |
 |---|---|---|---|---|---|
