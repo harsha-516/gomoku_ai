@@ -34,6 +34,7 @@ Move = Tuple[int, int]
 
 BOARD_SIZE = 15
 CENTER = BOARD_SIZE // 2
+MIN_BOARD, MAX_BOARD = 7, 19
 WIN_SCORE = 10_000_000
 
 DIRECTIONS = ((0, 1), (1, 0), (1, 1), (1, -1))
@@ -47,12 +48,13 @@ def other(color: str) -> str:
 # 1. Game rules (shared by every agent, the tests and the benchmark)
 # ============================================================================
 
-def empty_board() -> State:
-    return [[None] * BOARD_SIZE for _ in range(BOARD_SIZE)]
+def empty_board(size: int = BOARD_SIZE) -> State:
+    return [[None] * size for _ in range(size)]
 
 
 def legal_moves(state: State) -> List[Move]:
-    return [(r, c) for r in range(BOARD_SIZE) for c in range(BOARD_SIZE) if state[r][c] is None]
+    n = len(state)
+    return [(r, c) for r in range(n) for c in range(n) if state[r][c] is None]
 
 
 def is_full(state: State) -> bool:
@@ -61,11 +63,12 @@ def is_full(state: State) -> bool:
 
 def is_five(state: State, row: int, col: int, color: str) -> bool:
     """True if the stone of ``color`` at (row, col) is part of 5+ in a row."""
+    n = len(state)
     for dr, dc in DIRECTIONS:
         count = 1
         for sign in (1, -1):
             r, c = row + sign * dr, col + sign * dc
-            while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state[r][c] == color:
+            while 0 <= r < n and 0 <= c < n and state[r][c] == color:
                 count += 1
                 r += sign * dr
                 c += sign * dc
@@ -87,11 +90,12 @@ def winning_line(state: State, row: int, col: int) -> Optional[List[Move]]:
     color = state[row][col]
     if color is None:
         return None
+    n = len(state)
     for dr, dc in DIRECTIONS:
         line = [(row, col)]
         for sign in (1, -1):
             r, c = row + sign * dr, col + sign * dc
-            while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and state[r][c] == color:
+            while 0 <= r < n and 0 <= c < n and state[r][c] == color:
                 line.append((r, c))
                 r += sign * dr
                 c += sign * dc
@@ -110,23 +114,24 @@ def candidate_cells(state: State, radius: int = 2) -> List[Move]:
     This is the key branching-factor reduction from the synopsis (section 7.8):
     instead of all 225 cells, only cells near the action are considered.
     """
+    n = len(state)
     cells = set()
     any_stone = False
-    for r in range(BOARD_SIZE):
-        for c in range(BOARD_SIZE):
+    for r in range(n):
+        for c in range(n):
             if state[r][c] is None:
                 continue
             any_stone = True
             for dr in range(-radius, radius + 1):
                 rr = r + dr
-                if not 0 <= rr < BOARD_SIZE:
+                if not 0 <= rr < n:
                     continue
                 for dc in range(-radius, radius + 1):
                     cc = c + dc
-                    if 0 <= cc < BOARD_SIZE and state[rr][cc] is None:
+                    if 0 <= cc < n and state[rr][cc] is None:
                         cells.add((rr, cc))
     if not any_stone:
-        return [(CENTER, CENTER)]
+        return [(n // 2, n // 2)]
     return sorted(cells)
 
 
@@ -167,9 +172,8 @@ def line_score(s: str) -> int:
     return sum(w * s.count(p) for w, pats in PATTERNS for p in pats)
 
 
-def _build_lines() -> List[List[int]]:
+def _build_lines(n: int) -> List[List[int]]:
     """Flat-index lists of every row, column and diagonal of length >= 5."""
-    n = BOARD_SIZE
     lines = []
     for i in range(n):
         lines.append([i * n + c for c in range(n)])
@@ -181,13 +185,22 @@ def _build_lines() -> List[List[int]]:
     return [ln for ln in lines if len(ln) >= 5]
 
 
-LINES = _build_lines()
+_LINES: Dict[int, List[List[int]]] = {}
+
+
+def lines_for(n: int) -> List[List[int]]:
+    if n not in _LINES:
+        _LINES[n] = _build_lines(n)
+    return _LINES[n]
+
+
+LINES = lines_for(BOARD_SIZE)
 
 
 def _board_lines(state: State) -> List[str]:
     flat = ["." if v is None else v[0] for row in state for v in row]
     out = []
-    for ln in LINES:
+    for ln in lines_for(len(state)):
         s = "".join(flat[i] for i in ln)
         if "b" in s or "w" in s:
             out.append("#" + s + "#")
@@ -248,10 +261,11 @@ def evaluate(state: State, color: str, to_move: Optional[str] = None) -> int:
 
 
 def _segment(state: State, row: int, col: int, dr: int, dc: int, reach: int = 5) -> str:
+    n = len(state)
     chars = []
     for k in range(-reach, reach + 1):
         r, c = row + k * dr, col + k * dc
-        if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
+        if 0 <= r < n and 0 <= c < n:
             v = state[r][c]
             chars.append("." if v is None else v[0])
         else:
@@ -286,7 +300,8 @@ def move_score(state: State, row: int, col: int, color: str) -> int:
             after = before[:5] + "X" + before[6:]
             total += weight * (line_score(after) - line_score(before))
     # small preference for the centre breaks ties sensibly
-    total += 3 * (BOARD_SIZE - abs(row - CENTER) - abs(col - CENTER))
+    n = len(state)
+    total += 3 * (n - abs(row - n // 2) - abs(col - n // 2))
     return int(total)
 
 
@@ -380,6 +395,10 @@ class SearchStats:
 
 class Agent:
     name = "Agent"
+    # How the agent fits the AI theory in the synopsis (section 5)
+    agent_type = ""      # simple reflex / goal-based / utility-based
+    search = ""          # uninformed or informed
+    knowledge = ""       # what domain knowledge it uses
 
     def __init__(self) -> None:
         self.stats = SearchStats(agent=self.name)
@@ -404,6 +423,9 @@ class Agent:
 class RandomAgent(Agent):
     """Uninformed baseline: any legal move, with no evaluation at all."""
     name = "Random"
+    agent_type = "Simple reflex agent (no goal reasoning)"
+    search = "Uninformed - no search at all"
+    knowledge = "None: any legal move is equally good"
 
     def __init__(self, seed: Optional[int] = None) -> None:
         super().__init__()
@@ -425,6 +447,9 @@ class RuleBasedAgent(Agent):
     6. Otherwise play the cell with the best attack + defence value
     """
     name = "Rule-Based"
+    agent_type = "Goal-based agent (condition-action rules)"
+    search = "Informed, 1 move ahead (no tree search)"
+    knowledge = "Tactical rules: win, block, forks, open threes"
 
     def __init__(self, seed: Optional[int] = None) -> None:
         super().__init__()
@@ -475,6 +500,9 @@ class MinimaxAgent(Agent):
     as b^d. It is kept to show what alpha-beta saves.
     """
     name = "Minimax"
+    agent_type = "Utility-based agent"
+    search = "Informed adversarial search (heuristic at the leaves), no pruning"
+    knowledge = "Pattern heuristic + candidate move generation"
 
     def __init__(self, depth: int = 2, max_candidates: int = 10) -> None:
         super().__init__()
@@ -525,6 +553,75 @@ class MinimaxAgent(Agent):
         return max(values) if maximizing else min(values)
 
 
+class BlindMinimaxAgent(Agent):
+    """Unguided minimax - the *uninformed* adversarial search of synopsis 5.3.
+
+    It searches every legal move (no candidate generation, no ordering) and
+    only knows win / loss / draw: every non-final position is worth 0. So it
+    sees an immediate win or a loss one move away, but has no idea which of
+    the other moves are good. A node limit keeps it from running forever on
+    large boards, which is exactly the point it demonstrates: without domain
+    knowledge the state space is too big to search.
+    """
+    name = "Blind Minimax"
+    agent_type = "Goal-based agent (only knows the goal: five in a row)"
+    search = "Uninformed adversarial search (win/loss/draw only)"
+    knowledge = "None beyond the rules"
+
+    def __init__(self, depth: int = 2, node_limit: int = 300_000, seed: Optional[int] = None) -> None:
+        super().__init__()
+        self.depth = depth
+        self.node_limit = node_limit
+        self.rng = random.Random(seed)
+
+    def _choose(self, state, color):
+        self.me = color
+        self.stats.depth = self.depth
+        moves = legal_moves(state)
+        if not moves:
+            return None
+        best_val, best = -float("inf"), []
+        for r, c in moves:
+            state[r][c] = color
+            self.stats.nodes += 1
+            if is_five(state, r, c, color):
+                val = WIN_SCORE + self.depth
+            else:
+                val = self._minimax(state, self.depth - 1, False)
+            state[r][c] = None
+            if val > best_val:
+                best_val, best = val, [(r, c)]
+            elif val == best_val:
+                best.append((r, c))
+        self.stats.score = int(best_val)
+        if self.stats.nodes >= self.node_limit:
+            self.stats.reason = "Ran out of search budget: the board is too big to search blindly"
+        elif best_val == 0:
+            self.stats.reason = "Sees no win or loss within reach, so every move looks the same"
+        # all equally valued moves are indistinguishable to a blind search
+        return self.rng.choice(best)
+
+    def _minimax(self, state, depth, maximizing):
+        if depth == 0 or self.stats.nodes >= self.node_limit:
+            self.stats.evaluations += 1
+            return 0  # no heuristic: an unfinished game is worth nothing to either side
+        to_move = self.me if maximizing else other(self.me)
+        moves = legal_moves(state)
+        if not moves:
+            return 0
+        best = -float("inf") if maximizing else float("inf")
+        for r, c in moves:
+            state[r][c] = to_move
+            self.stats.nodes += 1
+            if is_five(state, r, c, to_move):
+                v = (WIN_SCORE + depth) * (1 if maximizing else -1)
+            else:
+                v = self._minimax(state, depth - 1, not maximizing)
+            state[r][c] = None
+            best = max(best, v) if maximizing else min(best, v)
+        return best
+
+
 class AlphaBetaAgent(MinimaxAgent):
     """Minimax with alpha-beta pruning.
 
@@ -534,6 +631,9 @@ class AlphaBetaAgent(MinimaxAgent):
     effective.
     """
     name = "Alpha-Beta"
+    agent_type = "Utility-based agent"
+    search = "Informed adversarial search with alpha-beta pruning"
+    knowledge = "Pattern heuristic + move ordering + candidate generation"
 
     def __init__(self, depth: int = 3, max_candidates: int = 12, ordered: bool = True) -> None:
         super().__init__(depth, max_candidates)
@@ -608,6 +708,9 @@ class ExpertAgent(Agent):
       in Gomoku the same position is reached by many move orders.
     """
     name = "Expert"
+    agent_type = "Utility-based agent"
+    search = "Informed: iterative deepening alpha-beta + transposition table"
+    knowledge = "Pattern heuristic + memory of evaluated positions"
 
     def __init__(self, max_depth: int = 8, time_limit: float = 2.0, max_candidates: int = 10,
                  seed: int = 2024) -> None:
@@ -618,14 +721,14 @@ class ExpertAgent(Agent):
         rng = random.Random(seed)
         self.zobrist = {
             (r, c, col): rng.getrandbits(64)
-            for r in range(BOARD_SIZE) for c in range(BOARD_SIZE) for col in ("black", "white")
+            for r in range(MAX_BOARD) for c in range(MAX_BOARD) for col in ("black", "white")
         }
         self.table: Dict[int, Tuple[int, int, int, Optional[Move]]] = {}
 
     def _hash(self, state):
-        h = 0
-        for r in range(BOARD_SIZE):
-            for c in range(BOARD_SIZE):
+        h = len(state)  # boards of different sizes never share a hash
+        for r in range(len(state)):
+            for c in range(len(state)):
                 if state[r][c] is not None:
                     h ^= self.zobrist[(r, c, state[r][c])]
         return h
@@ -738,6 +841,7 @@ def make_agent(name: str) -> Agent:
         "medium": RuleBasedAgent,
         "rule-based": RuleBasedAgent,
         "minimax": lambda: MinimaxAgent(depth=2, max_candidates=10),
+        "blind": lambda: BlindMinimaxAgent(depth=2),
         "hard": lambda: AlphaBetaAgent(depth=3, max_candidates=12),
         "alpha-beta": lambda: AlphaBetaAgent(depth=3, max_candidates=12),
         "expert": lambda: ExpertAgent(max_depth=8, time_limit=2.0),

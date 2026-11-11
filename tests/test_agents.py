@@ -157,3 +157,63 @@ def test_make_agent_by_difficulty():
     assert isinstance(make_agent("Expert"), ExpertAgent)
     with pytest.raises(ValueError):
         make_agent("Impossible")
+
+
+# ---------------- board sizes and uninformed search ----------------
+
+@pytest.mark.parametrize("n", [7, 9, 11, 13, 15, 19])
+def test_rules_work_on_every_board_size(n):
+    s = empty_board(n)
+    for c in range(5):
+        s[n - 1][c] = "white"
+    assert is_five(s, n - 1, 0, "white")
+    assert candidate_cells(empty_board(n)) == [(n // 2, n // 2)]
+    assert len(legal_moves(s)) == n * n - 5
+
+
+@pytest.mark.parametrize("n", [9, 11, 13])
+@pytest.mark.parametrize("factory", ALL_AGENTS)
+def test_agents_block_on_smaller_boards(n, factory):
+    s = empty_board(n)
+    for c in range(1, 5):
+        s[2][c] = "white"
+    s[2][0] = "black"
+    s[n - 1][n - 1] = "black"
+    assert factory().choose_move(s, "black") == (2, 5)
+
+
+def test_blind_minimax_wins_and_blocks_but_has_no_heuristic():
+    from agents import BlindMinimaxAgent
+    win = board([(4, c, "black") for c in range(4)])
+    assert BlindMinimaxAgent(seed=1).choose_move(win, "black") == (4, 4)
+    threat = board([(4, c, "white") for c in range(1, 5)] + [(4, 0, "black")])
+    assert BlindMinimaxAgent(seed=1).choose_move(threat, "black") == (4, 5)
+    quiet = board([(7, 7, "black")])
+    agent = BlindMinimaxAgent(seed=1)
+    agent.choose_move(quiet, "white")
+    assert agent.stats.score == 0  # no knowledge: every quiet move is worth the same
+
+
+def test_blind_search_states_grow_with_board_size():
+    """Synopsis 5.4: uninformed search cost grows with the problem size, informed does not."""
+    from agents import BlindMinimaxAgent
+    blind, informed = [], []
+    for n in (7, 9, 11):
+        s = empty_board(n)
+        s[n // 2][n // 2] = "black"
+        b, m = BlindMinimaxAgent(depth=2, seed=1), MinimaxAgent(depth=2, max_candidates=10)
+        b.choose_move(s, "white")
+        m.choose_move(s, "white")
+        blind.append(b.stats.nodes)
+        informed.append(m.stats.nodes)
+    assert blind[0] < blind[1] < blind[2]
+    assert informed[0] == informed[1] == informed[2]
+    assert all(i < bl for i, bl in zip(informed, blind))
+
+
+def test_every_agent_declares_its_ai_category():
+    from agents import BlindMinimaxAgent
+    for cls in (RandomAgent, BlindMinimaxAgent, RuleBasedAgent, MinimaxAgent, AlphaBetaAgent, ExpertAgent):
+        assert cls.agent_type and cls.search and cls.knowledge
+    assert BlindMinimaxAgent.search.startswith("Uninformed")
+    assert AlphaBetaAgent.search.startswith("Informed")
