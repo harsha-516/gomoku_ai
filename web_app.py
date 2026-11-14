@@ -8,7 +8,7 @@ made in Python by the agents in agents.py, through a small JSON API:
     POST /api/hint      {board, color}                -> up to 3 suggested moves
     POST /api/analyze   {moves, perspective}          -> post-game analysis
     POST /api/save      {mode, winner, moves, ...}    -> record the game as CSV
-    GET  /api/opening   ?stones=2&size=15             -> random fair opening
+    GET  /api/opening   ?stones=2&size=15[&seed=N]    -> randomised fair opening (seed repeats it)
     GET  /api/agents                                  -> what kind of agent each AI is
     POST /api/result    {player, level, moves, ...}   -> AI grades the game, rating update, saved to DB
     GET  /api/scoreboard?player=NAME                  -> leaderboard + that player's history
@@ -42,7 +42,8 @@ from flask import Flask, jsonify, request, send_from_directory
 from agents import (
     BOARD_SIZE, CATEGORY_NAMES, MAX_BOARD, MIN_BOARD, PATTERNS, WIN_SCORE, AlphaBetaAgent,
     BlindMinimaxAgent, ExpertAgent, MinimaxAgent, RandomAgent, RuleBasedAgent, candidate_cells,
-    describe_move, evaluate, generate_moves, is_five, legal_moves, make_agent, pattern_counts,
+    describe_move, evaluate, generate_moves, is_five, legal_moves, make_agent, move_seed, pattern_counts,
+    random_opening,
 )
 from game_analysis import analyze_game
 import fuzzy_logic
@@ -115,7 +116,11 @@ def ai_move():
     level = data.get("level", "Medium")
     if level not in LEVELS:
         raise BadRequest(f"level must be one of {sorted(LEVELS)}")
-    agent = make_agent(level)
+    # optional game seed: makes the agent's tie-breaks reproducible (Robot Battle replays)
+    seed = data.get("seed")
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+        raise BadRequest("seed must be an integer")
+    agent = make_agent(level, seed=None if seed is None else move_seed(seed, board, color))
     move = agent.choose_move(board, color)
     if move is None:
         return jsonify({"move": None, "stats": agent.stats.to_dict()})
@@ -149,18 +154,13 @@ def analyze():
 
 @app.get("/api/opening")
 def opening():
-    """A random, roughly balanced opening: stones alternate near the centre."""
+    """A randomised, roughly balanced opening near the centre (optional ?seed=N to repeat it)."""
     stones = max(0, min(6, request.args.get("stones", default=2, type=int)))
     size = request.args.get("size", default=BOARD_SIZE, type=int)
     if not MIN_BOARD <= size <= MAX_BOARD:
         raise BadRequest(f"size must be between {MIN_BOARD} and {MAX_BOARD}")
-    rng = random.Random()
-    c = size // 2
-    cells = [(c + dr, c + dc) for dr in range(-2, 3) for dc in range(-2, 3)]
-    rng.shuffle(cells)
-    picked = [(c, c)] + [x for x in cells if x != (c, c)][: stones - 1] if stones else []
-    return jsonify({"moves": [{"player": "black" if i % 2 == 0 else "white", "row": r, "col": col}
-                              for i, (r, col) in enumerate(picked)]})
+    seed = request.args.get("seed", default=None, type=int)
+    return jsonify({"moves": random_opening(size, stones, seed)})
 
 
 @app.post("/api/save")

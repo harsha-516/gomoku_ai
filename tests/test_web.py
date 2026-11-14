@@ -74,7 +74,29 @@ def test_hint_returns_up_to_three(client):
 def test_opening_is_balanced(client):
     moves = client.get("/api/opening?stones=2").get_json()["moves"]
     assert [m["player"] for m in moves] == ["black", "white"]
-    assert moves[0]["row"] == 7 and moves[0]["col"] == 7
+    # randomised but fair: Black's first stone is one of the 9 centre cells, White's within the 5x5 block
+    assert abs(moves[0]["row"] - 7) <= 1 and abs(moves[0]["col"] - 7) <= 1
+    assert abs(moves[1]["row"] - 7) <= 2 and abs(moves[1]["col"] - 7) <= 2
+    assert (moves[0]["row"], moves[0]["col"]) != (moves[1]["row"], moves[1]["col"])
+
+
+def test_opening_is_repeatable_from_a_seed_and_varies_between_seeds(client):
+    a = client.get("/api/opening?stones=3&seed=42").get_json()["moves"]
+    b = client.get("/api/opening?stones=3&seed=42").get_json()["moves"]
+    assert a == b
+    others = {tuple((m["row"], m["col"]) for m in client.get(f"/api/opening?stones=3&seed={n}").get_json()["moves"])
+              for n in range(30)}
+    assert len(others) > 5
+
+
+def test_ai_move_accepts_a_seed_and_is_reproducible(client):
+    board = [[None] * 15 for _ in range(15)]
+    board[7][7], board[7][8] = "black", "white"
+    body = {"board": board, "color": "black", "level": "Medium", "seed": 123}
+    first = client.post("/api/ai-move", json=body).get_json()["move"]
+    assert client.post("/api/ai-move", json=body).get_json()["move"] == first
+    bad = client.post("/api/ai-move", json={**body, "seed": "x"})
+    assert bad.status_code == 400
 
 
 def test_save_writes_csv(client, tmp_path):
