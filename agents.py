@@ -406,8 +406,12 @@ class Agent:
     search = ""          # uninformed or informed
     knowledge = ""       # what domain knowledge it uses
 
-    def __init__(self) -> None:
+    def __init__(self, seed: Optional[int] = None) -> None:
         self.stats = SearchStats(agent=self.name)
+        # seedable RNG: used only to break ties between equally valued moves, so a
+        # game can be replayed exactly from its seed (seed=None -> fresh randomness)
+        self.seed = seed
+        self.rng = random.Random(seed)
 
     def choose_move(self, state: State, color: str) -> Optional[Move]:
         self.stats = SearchStats(agent=self.name)
@@ -440,8 +444,7 @@ class RandomAgent(Agent):
     knowledge = "None: any legal move is equally good"
 
     def __init__(self, seed: Optional[int] = None) -> None:
-        super().__init__()
-        self.rng = random.Random(seed)
+        super().__init__(seed)
 
     def _choose(self, state, color):
         moves = legal_moves(state)
@@ -470,8 +473,7 @@ class RuleBasedAgent(Agent):
     knowledge = "Tactical rules: win, block, forks, open threes"
 
     def __init__(self, seed: Optional[int] = None) -> None:
-        super().__init__()
-        self.rng = random.Random(seed)
+        super().__init__(seed)
 
     def _choose(self, state, color):
         opp = other(color)
@@ -484,7 +486,10 @@ class RuleBasedAgent(Agent):
             hits = [m for m in cands if pred(m)]
             if hits:
                 self.stats.reason = reason
-                return max(hits, key=lambda m: move_score(state, m[0], m[1], color))
+                scores = {m: move_score(state, m[0], m[1], color) for m in hits}
+                top = max(scores.values())
+                # equally scored moves are interchangeable: pick one at random (same strength)
+                return self.rng.choice([m for m in hits if scores[m] == top])
             return None
 
         for m in cands:
@@ -524,8 +529,8 @@ class MinimaxAgent(Agent):
     search = "Informed adversarial search (heuristic at the leaves), no pruning"
     knowledge = "Pattern heuristic + candidate move generation"
 
-    def __init__(self, depth: int = 2, max_candidates: int = 10) -> None:
-        super().__init__()
+    def __init__(self, depth: int = 2, max_candidates: int = 10, seed: Optional[int] = None) -> None:
+        super().__init__(seed)
         self.depth = depth
         self.max_candidates = max_candidates
 
@@ -539,7 +544,7 @@ class MinimaxAgent(Agent):
     def _choose(self, state, color):
         self.me = color
         self.stats.depth = self.depth
-        best_move, best_val = None, -float("inf")
+        best_val, ties = -float("inf"), []
         for r, c in self._moves(state, color):
             state[r][c] = color
             self.stats.nodes += 1
@@ -550,7 +555,10 @@ class MinimaxAgent(Agent):
             state[r][c] = None
             self.stats.consider((r, c), val)
             if val > best_val:
-                best_val, best_move = val, (r, c)
+                best_val, ties = val, [(r, c)]
+            elif val == best_val:
+                ties.append((r, c))
+        best_move = self.rng.choice(ties) if ties else None   # random tie-break, same value
         self.stats.score = int(best_val) if best_move else 0
         return best_move
 
@@ -590,10 +598,9 @@ class BlindMinimaxAgent(Agent):
     knowledge = "None beyond the rules"
 
     def __init__(self, depth: int = 2, node_limit: int = 300_000, seed: Optional[int] = None) -> None:
-        super().__init__()
+        super().__init__(seed)
         self.depth = depth
         self.node_limit = node_limit
-        self.rng = random.Random(seed)
 
     def _choose(self, state, color):
         self.me = color
@@ -659,8 +666,9 @@ class AlphaBetaAgent(MinimaxAgent):
     search = "Informed adversarial search with alpha-beta pruning"
     knowledge = "Pattern heuristic + move ordering + candidate generation"
 
-    def __init__(self, depth: int = 3, max_candidates: int = 12, ordered: bool = True) -> None:
-        super().__init__(depth, max_candidates)
+    def __init__(self, depth: int = 3, max_candidates: int = 12, ordered: bool = True,
+                 seed: Optional[int] = None) -> None:
+        super().__init__(depth, max_candidates, seed)
         self.ordered = ordered
         if not ordered:
             self.name = "Alpha-Beta (unordered)"
@@ -671,20 +679,26 @@ class AlphaBetaAgent(MinimaxAgent):
     def _choose(self, state, color):
         self.me = color
         self.stats.depth = self.depth
-        alpha, beta = -float("inf"), float("inf")
-        best_move = None
+        beta = float("inf")
+        best_val, ties = -float("inf"), []
         for r, c in self._moves(state, color):
             state[r][c] = color
             self.stats.nodes += 1
             if is_five(state, r, c, color):
                 val = WIN_SCORE + self.depth
             else:
-                val = self._alphabeta(state, self.depth - 1, alpha, beta, False)
+                # scores are integers, so a lower bound of best-1 keeps pruning almost as
+                # strong while still returning the exact value of moves that tie the best
+                lo = best_val - 1 if ties else -float("inf")
+                val = self._alphabeta(state, self.depth - 1, lo, beta, False)
             state[r][c] = None
             self.stats.consider((r, c), val)
-            if val > alpha or best_move is None:
-                alpha, best_move = max(alpha, val), (r, c)
-        self.stats.score = int(alpha) if best_move else 0
+            if val > best_val:
+                best_val, ties = val, [(r, c)]
+            elif val == best_val:
+                ties.append((r, c))
+        best_move = self.rng.choice(ties) if ties else None   # random tie-break, same value
+        self.stats.score = int(best_val) if best_move else 0
         return best_move
 
     def _alphabeta(self, state, depth, alpha, beta, maximizing):
@@ -738,8 +752,8 @@ class ExpertAgent(Agent):
     knowledge = "Pattern heuristic + memory of evaluated positions"
 
     def __init__(self, max_depth: int = 8, time_limit: float = 2.0, max_candidates: int = 10,
-                 seed: int = 2024) -> None:
-        super().__init__()
+                 seed: int = 2024, rng_seed: Optional[int] = None) -> None:
+        super().__init__(rng_seed)   # `seed` only fills the Zobrist table; rng_seed drives tie-breaks
         self.max_depth = max_depth
         self.time_limit = time_limit
         self.max_candidates = max_candidates
@@ -784,8 +798,8 @@ class ExpertAgent(Agent):
     def _root(self, state, color, depth, h, moves, pv):
         if pv in moves:
             moves = [pv] + [m for m in moves if m != pv]
-        alpha, beta = -float("inf"), float("inf")
-        best_move = moves[0]
+        beta = float("inf")
+        best_val, ties = -float("inf"), []
         scores = []
         for r, c in moves:
             state[r][c] = color
@@ -793,13 +807,18 @@ class ExpertAgent(Agent):
             if is_five(state, r, c, color):
                 val = WIN_SCORE + depth
             else:
-                val = -self._negamax(state, other(color), depth - 1, -beta, -alpha,
+                # window (best-1, inf): moves that tie the best keep their exact value
+                lo = best_val - 1 if ties else -float("inf")
+                val = -self._negamax(state, other(color), depth - 1, -beta, -lo,
                                      h ^ self.zobrist[(r, c, color)])
             state[r][c] = None
             scores.append(((r, c), val))
-            if val > alpha:
-                alpha, best_move = val, (r, c)
-        return int(alpha), best_move, scores
+            if val > best_val:
+                best_val, ties = val, [(r, c)]
+            elif val == best_val:
+                ties.append((r, c))
+        best_move = ties[0] if len(ties) == 1 else self.rng.choice(ties)
+        return int(best_val), best_move, scores
 
     def _negamax(self, state, color, depth, alpha, beta, h):
         if self.stats.nodes & 255 == 0 and time.perf_counter() > self.deadline:
@@ -861,20 +880,89 @@ DIFFICULTIES = {
 }
 
 
-def make_agent(name: str) -> Agent:
-    """Create an agent from a difficulty or algorithm name."""
+def make_agent(name: str, seed: Optional[int] = None) -> Agent:
+    """Create an agent from a difficulty or algorithm name.
+
+    ``seed`` makes the agent's tie-breaks reproducible (None = fresh randomness).
+    """
     key = name.split()[0].strip().lower()
     factories = {
-        "easy": RandomAgent,
-        "random": RandomAgent,
-        "medium": RuleBasedAgent,
-        "rule-based": RuleBasedAgent,
-        "minimax": lambda: MinimaxAgent(depth=2, max_candidates=10),
-        "blind": lambda: BlindMinimaxAgent(depth=2),
-        "hard": lambda: AlphaBetaAgent(depth=3, max_candidates=12),
-        "alpha-beta": lambda: AlphaBetaAgent(depth=3, max_candidates=12),
-        "expert": lambda: ExpertAgent(max_depth=8, time_limit=2.0),
+        "easy": lambda: RandomAgent(seed=seed),
+        "random": lambda: RandomAgent(seed=seed),
+        "medium": lambda: RuleBasedAgent(seed=seed),
+        "rule-based": lambda: RuleBasedAgent(seed=seed),
+        "minimax": lambda: MinimaxAgent(depth=2, max_candidates=10, seed=seed),
+        "blind": lambda: BlindMinimaxAgent(depth=2, seed=seed),
+        "hard": lambda: AlphaBetaAgent(depth=3, max_candidates=12, seed=seed),
+        "alpha-beta": lambda: AlphaBetaAgent(depth=3, max_candidates=12, seed=seed),
+        "expert": lambda: ExpertAgent(max_depth=8, time_limit=2.0, rng_seed=seed),
     }
     if key not in factories:
         raise ValueError(f"Unknown agent '{name}'. Choose from: {', '.join(factories)}")
     return factories[key]()
+
+
+def move_seed(game_seed: int, state: State, color: str) -> int:
+    """Seed for one move of a seeded game.
+
+    Derived from the game seed and the position's stone count, so every move gets
+    its own stream yet the whole game is reproducible from ``game_seed`` alone.
+    """
+    stones = sum(1 for row in state for cell in row if cell is not None)
+    return (int(game_seed) * 1_000_003 + stones * 2 + (1 if color == "white" else 0)) & 0x7FFFFFFF
+
+
+def random_opening(size: int = BOARD_SIZE, stones: int = 3, seed: Optional[int] = None) -> List[Dict]:
+    """A randomised, roughly balanced opening near the centre.
+
+    Black's first stone is one of the 9 centre cells; the other stones are drawn
+    from the 5x5 block around the centre. Alternating colours, black first.
+    The same seed always gives the same opening.
+    """
+    stones = max(0, min(6, stones))
+    if not stones:
+        return []
+    rng = random.Random(seed)
+    c = size // 2
+    centre = [(c + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)]
+    block = [(c + dr, c + dc) for dr in range(-2, 3) for dc in range(-2, 3)]
+    first = rng.choice(centre)
+    rest = [m for m in block if m != first]
+    rng.shuffle(rest)
+    picked = [first] + rest[: stones - 1]
+    return [{"player": "black" if i % 2 == 0 else "white", "row": r, "col": col}
+            for i, (r, col) in enumerate(picked)]
+
+
+def play_battle(level_a: str, level_b: str, seed: int, a_black: bool = True,
+                size: int = BOARD_SIZE, stones: int = 3) -> Dict:
+    """Replay one Robot Battle game from its seed.
+
+    Matches the browser exactly: the opening comes from ``seed >> 1`` (so the two
+    games of a colour-swapped pair share one opening) and every move is seeded
+    with ``move_seed(seed, ...)``. Returns the winner ('black', 'white', 'draw')
+    and the full move list. Expert is time-limited, so it is only reproducible
+    when the machine is not the bottleneck.
+    """
+    state = empty_board(size)
+    moves: List[Dict] = []
+    for m in random_opening(size, stones, seed >> 1):
+        state[m["row"]][m["col"]] = m["player"]
+        moves.append(dict(m))
+    names = {"A": level_a, "B": level_b}
+    winner = "draw"
+    while True:
+        color = "black" if len(moves) % 2 == 0 else "white"
+        who = "A" if (color == "black") == a_black else "B"
+        agent = make_agent(names[who], seed=move_seed(seed, state, color))
+        move = agent.choose_move(state, color)
+        if move is None:
+            break
+        state[move[0]][move[1]] = color
+        moves.append({"player": color, "row": move[0], "col": move[1]})
+        if is_five(state, move[0], move[1], color):
+            winner = color
+            break
+        if is_full(state):
+            break
+    return {"winner": winner, "moves": moves, "seed": seed, "a_black": a_black}
