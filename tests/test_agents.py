@@ -249,3 +249,31 @@ def test_play_battle_replays_from_its_seed():
     assert a["moves"] == b["moves"] and a["winner"] == b["winner"]
     c = play_battle("Medium", "Medium", 778, a_black=True, stones=3)
     assert c["moves"] != a["moves"]
+
+
+def test_identical_agents_are_symmetric_between_robot_a_and_b():
+    # With the same seed, swapping which robot (A or B) holds Black must not change a single
+    # move. If it did, seeds, caches or construction order would favour one robot and
+    # identical agents would stop scoring about 50/50 in Robot battles.
+    from agents import play_battle
+    for level in ("Medium", "Minimax", "Hard"):
+        for seed in (11, 12):
+            as_black = play_battle(level, level, seed, a_black=True, size=9, stones=3)
+            as_white = play_battle(level, level, seed, a_black=False, size=9, stones=3)
+            assert as_black["moves"] == as_white["moves"], f"{level} seed {seed}"
+            assert as_black["winner"] == as_white["winner"]
+
+
+def test_agents_share_no_state_between_instances():
+    # Two instances of the same agent must give the same answer on the same position,
+    # in either construction order.
+    from agents import empty_board, make_agent
+    s = empty_board(15)
+    for r, c, p in [(7, 7, "black"), (7, 8, "white"), (8, 8, "black")]:
+        s[r][c] = p
+    for name in ("Medium", "Minimax", "Hard"):
+        first = make_agent(name, seed=3)
+        second = make_agent(name, seed=3)
+        m2 = second.choose_move(s, "white")
+        m1 = first.choose_move(s, "white")
+        assert m1 == m2, name
