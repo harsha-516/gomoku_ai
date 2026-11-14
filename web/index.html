@@ -3,16 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1e3a">
+  <meta name="theme-color" content="#10294d">
+  <script>try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&!sessionStorage.getItem('g-intro')){document.documentElement.classList.add('intro');setTimeout(function(){document.documentElement.classList.remove('intro')},8000)}}catch(e){}</script>
   <title>Gomoku</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"></noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b1e3a'/><circle cx='36' cy='50' r='20' fill='%230a0f1a' stroke='%232a4a73' stroke-width='3'/><circle cx='64' cy='50' r='20' fill='%23eef4f7'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2310294d'/><circle cx='36' cy='50' r='20' fill='%230a0f1a' stroke='%232a4a73' stroke-width='3'/><circle cx='64' cy='50' r='20' fill='%23eef4f7'/></svg>">
 </head>
 <body>
+  <div id="loader" role="status" aria-label="Loading">
+    <span class="ld-bar"></span>
+    <div class="ld-board"><i class="ld-s b"></i><i class="ld-s w"></i></div>
+    <span class="ld-name">Gomoku</span>
+    <span class="ld-count" id="ldCount">000</span>
+    <button class="ld-skip" id="ldSkip" type="button">Skip intro</button>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+  <div id="cursor" aria-hidden="true"><span class="cur-dot"></span><span class="cur-ring"><em></em></span></div>
   <header class="topbar">
     <button class="logo" data-go="home" aria-label="Gomoku home">Gomoku</button>
     <nav class="topnav" aria-label="Main">
@@ -31,35 +41,86 @@
   <main>
     <!-- HOME -->
     <section id="screen-home" class="screen active">
-      <div class="hero">
-        <div class="hero-text">
-          <h1>Five in a row.<span class="five">Against an engine.</span></h1>
-          <p>Line up five stones before the computer does. Six opponents, each built on a different search technique, from random guessing to iterative deepening.</p>
-          <div class="hero-buttons">
-            <button class="big-btn primary" id="continueBtn" hidden>Continue game</button>
-            <button class="big-btn ghost" data-go="levels">Levels</button>
-            <button class="big-btn primary" data-go="pick">Quick play</button>
-            <button class="big-btn ghost" data-go="watch">Robot battle</button>
-            <button class="big-btn ghost" data-go="lab">AI Lab</button>
-            <button class="big-btn ghost" data-open-themes>Board</button>
+      <div class="home">
+        <section class="h-hero" id="hHero">
+          <div class="h-stage" aria-hidden="true">
+            <div class="h-scale"><div class="h-rig" id="hRig"><div class="h-slab"></div><div class="h-plane" id="hPlane"></div></div></div>
           </div>
-          <p class="continue-info" id="continueInfo" hidden></p>
-          <div class="player-chip" id="playerChip"></div>
+          <h1 class="h-title" id="hTitle">Five in a row.</h1>
+          <div class="h-copy">
+            <p class="h-lede">Play against six engines, from random guessing to iterative deepening, and watch how each one decides.</p>
+            <div class="h-cta">
+              <button class="big-btn primary" id="continueBtn" data-cursor="Resume" hidden>Continue game</button>
+              <button class="big-btn primary" data-go="pick" data-cursor="Play">Play now</button>
+              <button class="big-btn ghost" data-go="levels" data-cursor="Open">Ten levels</button>
+            </div>
+            <p class="continue-info" id="continueInfo" hidden></p>
+            <div class="player-chip" id="playerChip"></div>
+          </div>
+          <div class="h-scroll" aria-hidden="true"><span></span>Scroll</div>
+        </section>
+
+        <div class="marquee" aria-hidden="true">
+          <div class="mq-track" id="mqTrack"></div>
         </div>
-        <div class="hero-art" aria-hidden="true">
-          <svg viewBox="0 0 220 220" class="hero-board"></svg>
-        </div>
+
+        <section class="h-sec h-opps" id="hOpps">
+          <header class="h-sec-head">
+            <h2 class="h-h2" data-split>Six engines, one rule.</h2>
+            <p class="h-sec-note">Each opponent searches differently. The bars show how widely it looks and where it commits. Choose one to play.</p>
+          </header>
+          <ul class="opp-list" id="oppList"></ul>
+        </section>
+
+        <section class="h-sec h-paper" id="hEngine" data-surface="paper">
+          <div class="eng-pin" id="engPin">
+            <div class="eng-board">
+              <svg id="engSvg" viewBox="0 0 424 424" role="img" aria-label="Illustration of an engine choosing a move on a nine by nine board"></svg>
+              <p class="eng-cap">Illustrative position. White to move.</p>
+            </div>
+            <div class="eng-steps">
+              <h2 class="h-h2 ink" data-split>How an engine thinks</h2>
+              <ol class="eng-list" id="engList">
+                <li><b>Generate candidates</b><span>Only squares next to existing stones are worth considering. That cuts 70 empty squares to a dozen.</span></li>
+                <li><b>Score each move</b><span>A heuristic rates every candidate by the lines it builds or blocks. Here, stopping Black's open three scores highest.</span></li>
+                <li><b>Look ahead</b><span>For the best moves it plays out the replies, and the replies to those replies, to a fixed depth.</span></li>
+                <li><b>Prune and commit</b><span>Branches that cannot beat the best result so far are dropped without being searched. The best move is played.</span></li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section class="h-sec h-levels" id="hLevels">
+          <header class="h-sec-head">
+            <h2 class="h-h2" data-split>Ten levels.</h2>
+            <p class="h-sec-note">Boards get larger and opponents get smarter. Each level teaches one idea from adversarial search.</p>
+          </header>
+          <div class="lv-pin" id="lvPin"><div class="lv-track" id="lvTrack"></div></div>
+        </section>
+
+        <section class="h-sec h-end" id="hEnd">
+          <h2 class="h-giant" data-split>Your move.</h2>
+          <div class="h-end-row">
+            <button class="big-btn primary" data-go="pick" data-cursor="Play">Play now</button>
+            <nav class="h-end-links" aria-label="More">
+              <button class="link-btn" data-go="watch">Robot battle</button>
+              <button class="link-btn" data-go="lab">AI Lab</button>
+              <button class="link-btn" data-go="scores">Scoreboard</button>
+              <button class="link-btn" data-go="learn">Learn</button>
+            </nav>
+          </div>
+        </section>
       </div>
     </section>
 
     <!-- LEVELS -->
     <section id="screen-levels" class="screen">
-      <h2 class="screen-title">Adventure Levels</h2>
+      <h2 class="screen-title">Levels</h2>
       <div class="progress-row">
         <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
         <span id="progressText">0 / 10 levels</span>
       </div>
-      <p class="screen-sub">Beat a level to unlock the next one. Every level teaches you one idea from Artificial Intelligence. Boards get bigger and opponents get smarter!</p>
+      <p class="screen-sub">Beat a level to unlock the next. Each one introduces an idea from adversarial search, on larger boards against stronger opponents.</p>
       <div class="level-grid" id="levelGrid"></div>
       <div class="center"><button class="link" id="resetProgress">Reset my progress</button></div>
     </section>
@@ -191,7 +252,7 @@
           <label class="slider">Speed <input type="range" id="watchSpeed" min="0" max="1200" step="100" value="400"></label>
           <label class="slider">Games <select id="watchGames" class="select inline"><option>1</option><option>3</option><option selected>5</option><option>10</option><option>20</option></select></label>
           <div class="controls">
-            <button class="ctl primary" id="watchStart">▶ Start</button>
+            <button class="ctl primary" id="watchStart">Start</button>
             <button class="ctl" id="watchPause">Pause</button>
             <button class="ctl" id="watchReset">Reset</button>
           </div>
@@ -199,7 +260,7 @@
 
         <div class="board-wrap">
           <svg id="watchBoard" viewBox="0 0 640 640" aria-label="Robot battle board"></svg>
-          <div class="move-count" id="watchStatus">Pick two robots and press Start</div>
+          <div class="move-count" id="watchStatus">Choose two engines and press Start.</div>
         </div>
 
         <aside class="panel">
@@ -223,8 +284,8 @@
 
     <!-- AI LAB -->
     <section id="screen-lab" class="screen">
-      <h2 class="screen-title">AI Lab: how the robots think</h2>
-      <p class="screen-sub">Every idea below is running for real inside this game. Try the experiments!</p>
+      <h2 class="screen-title">AI Lab: how the engines decide</h2>
+      <p class="screen-sub">Every idea below runs inside this game. Each section has a live experiment.</p>
       <div class="lab-tabs" role="tablist">
         <button class="lab-tab active" data-lab="agent" role="tab">Agent</button>
         <button class="lab-tab" data-lab="env" role="tab">Environment</button>
@@ -247,7 +308,7 @@
               <div class="loop-arrow">➜</div>
               <div class="loop-step"><span></span><b>Decide</b><small>search and evaluate</small></div>
               <div class="loop-arrow">➜</div>
-              <div class="loop-step"><span>✋</span><b>Act</b><small>place a stone</small></div>
+              <div class="loop-step"><span></span><b>Act</b><small>place a stone</small></div>
             </div>
           </div>
           <div class="panel">
@@ -299,7 +360,7 @@
           <p><b>Uninformed (blind)</b> search has no domain knowledge: it tries every empty cell and only recognises win or loss. <b>Informed</b> search uses a <b>heuristic function</b> and <b>candidate move generation</b> to look only at promising moves. Pick a board size and run all four searches on the same position (2 moves ahead):</p>
           <div class="lab-controls">
             <select id="cmpSize" class="select inline"><option value="9">9×9</option><option value="11">11×11</option><option value="13">13×13</option><option value="15" selected>15×15</option></select>
-            <button class="ctl primary" id="cmpRun">▶ Run experiment</button>
+            <button class="ctl primary" id="cmpRun">Run experiment</button>
           </div>
           <div id="cmpOut" class="bars"></div>
         </div>
@@ -370,8 +431,8 @@
         <div class="ethics-grid">
           <div class="panel">
             <h3>Bias: the first-move advantage</h3>
-            <p>In Gomoku, the player who moves first (Black) has a real advantage. Our measurements: with the same robot on both sides, <b>Black won 11 of 12</b> Owl-vs-Owl games and <b>17 vs 14</b> Foxy-vs-Foxy games. Check it yourself:</p>
-            <button class="ctl primary" id="fairRun">▶ Run a live bias test</button>
+            <p>In Gomoku, the player who moves first (Black) has a real advantage. Measured with the same engine on both sides, <b>Black won 11 of 12</b> alpha-beta games and <b>17 of 31</b> rule-based games. Check it yourself:</p>
+            <button class="ctl primary" id="fairRun">Run a live bias test</button>
             <div id="fairOut" class="fair-out"></div>
           </div>
           <div class="panel">
@@ -393,7 +454,7 @@
             </ul>
           </div>
           <div class="panel">
-            <h3>Privacy and safety for kids</h3>
+            <h3>Privacy</h3>
             <ul class="ethics-list">
               <li>Only a <b>first name</b> is stored. No email, no password, no age, no location.</li>
               <li>Everything stays <b>on this computer</b> (data/gomoku.db). Nothing is sent to the internet.</li>
@@ -408,7 +469,7 @@
     <!-- SCOREBOARD -->
     <section id="screen-scores" class="screen">
       <h2 class="screen-title">Scoreboard</h2>
-      <p class="screen-sub">After every game against a robot, the AI grades how well you played (accuracy and grade) and updates your rating, like a chess rating. Beat stronger robots to climb faster!</p>
+      <p class="screen-sub">After every game against a robot, the AI grades how well you played (accuracy and grade) and updates your rating, like a chess rating. Beating stronger opponents raises it faster.</p>
       <div class="scores-layout">
         <div class="scores-main" id="scoresMain"><div class="panel"><p>Loading…</p></div></div>
         <aside class="panel">
@@ -422,8 +483,8 @@
 
     <!-- LEARN -->
     <section id="screen-learn" class="screen">
-      <h2 class="screen-title">Learn with the AI Tutor</h2>
-      <p class="screen-sub">The AI teaches you: read the rules, solve lessons the AI checks and explains, try new puzzles the AI invents for you, then practise with a coach that comments on every move.</p>
+      <h2 class="screen-title">Learn</h2>
+      <p class="screen-sub">Read the rules, work through lessons the engine checks and explains, solve generated puzzles, then play with a coach that comments on every move.</p>
       <div class="lab-tabs" role="tablist">
         <button class="learn-tab active" data-learn="rules" role="tab">Rules</button>
         <button class="learn-tab" data-learn="lessons" role="tab">Lessons</button>
@@ -434,7 +495,7 @@
       <div class="learn-panel" id="learn-rules">
       <div class="learn-grid" id="learnGrid"></div>
       <div class="keys panel">
-        <h3>⌨ Keyboard shortcuts</h3>
+        <h3> Keyboard shortcuts</h3>
         <p><kbd>P</kbd> or <kbd>Esc</kbd> pause / resume · <kbd>H</kbd> hint · <kbd>U</kbd> undo · <kbd>R</kbd> restart</p>
       </div>
       </div>
@@ -450,12 +511,12 @@
             <div class="move-count" id="tutorTurn"></div>
           </div>
           <aside class="panel tutor-panel">
-            <div class="bubble"><div class="bubble-face"></div><div class="bubble-text" id="tutorSay">Pick a lesson.</div></div>
+            <div class="bubble"><div class="bubble-face"></div><div class="bubble-text" id="tutorSay">Choose a lesson.</div></div>
             <div id="tutorIdea" class="tutor-idea"></div>
             <div class="controls">
               <button class="ctl" id="tutorHint">Hint</button>
               <button class="ctl" id="tutorShow">Show answer</button>
-              <button class="ctl primary" id="tutorNext">Next ▶</button>
+              <button class="ctl primary" id="tutorNext">Next</button>
             </div>
             <p class="small" id="tutorScore"></p>
           </aside>
@@ -467,8 +528,8 @@
           <h3>Practise with a coach</h3>
           <p>Play a real game while the AI Tutor watches. After each of your moves it says <b>great move</b>, <b>careful</b> or <b>mistake</b>, explains why, and shows a better square on the board.</p>
           <div class="practice-buttons">
-            <button class="big-btn green" data-practice="Easy">Practise against Pip (easy)</button>
-            <button class="big-btn primary" data-practice="Medium">Practise against Foxy</button>
+            <button class="big-btn green" data-practice="Easy">Practise against Random</button>
+            <button class="big-btn primary" data-practice="Medium">Practise against Rule-based</button>
             <button class="big-btn purple" data-practice="smart">Smart Match</button>
           </div>
         </div>
@@ -551,6 +612,12 @@
   <canvas id="confetti" aria-hidden="true"></canvas>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="vendor/lenis.min.js"></script>
   <script src="app.js"></script>
+  <script src="motion.js"></script>
+  <script src="home.js"></script>
+  <script src="sections.js"></script>
 </body>
 </html>

@@ -150,13 +150,13 @@ function confetti() {
 }
 
 /* ------------------------------------------------------------------ board themes */
-// Two boards, one design system: the default navy and a light alternate.
+// Two boards, one design system: a mid-tone steel-blue slate (default) and a light alternate.
 const THEMES = {
-  navy:  { name: "Navy",  accent: "#35d39a", fill: "#122b4d", edge: "#2a4a73", line: "#2f5079", star: "#4a6d98", coord: "#8aa2bb", whiteEdge: "rgba(0,0,0,.18)" },
-  light: { name: "Light", accent: "#0b8f64", fill: "#eef4f7", edge: "#c3d1dc", line: "#b4c4d2", star: "#8fa5b8", coord: "#587087", whiteEdge: "#aebdc9" },
+  slate: { name: "Slate", accent: "#35d39a", fill: "#557591", edge: "#9bb4ca", line: "#2a4258", star: "#1f3346", coord: "#ffffff", whiteEdge: "rgba(0,0,0,.28)", blackRim: "rgba(255,255,255,.34)" },
+  light: { name: "Light", accent: "#0b8f64", fill: "#eef4f7", edge: "#c3d1dc", line: "#b4c4d2", star: "#8fa5b8", coord: "#587087", whiteEdge: "#5f7388", blackRim: "rgba(255,255,255,.22)" },
 };
-let themeKey = store.get("gomoku-theme", "navy");
-if (!THEMES[themeKey]) themeKey = "navy";
+let themeKey = store.get("gomoku-theme", "slate");
+if (!THEMES[themeKey]) themeKey = "slate";
 const theme = () => THEMES[themeKey];
 
 /* ------------------------------------------------------------------ board view */
@@ -188,8 +188,9 @@ class BoardView {
     svg.innerHTML = "";
     const defs = this.el("defs", {});
     defs.innerHTML = `
-      <radialGradient id="${id}-gBlack" cx=".34" cy=".3" r=".8"><stop offset="0" stop-color="#4a5468"/><stop offset=".45" stop-color="#171d2b"/><stop offset="1" stop-color="#05080f"/></radialGradient>
-      <radialGradient id="${id}-gWhite" cx=".34" cy=".3" r=".85"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eaf0f4"/><stop offset="1" stop-color="#c9d6df"/></radialGradient>
+      <radialGradient id="${id}-gBlack" cx=".34" cy=".3" r=".8"><stop offset="0" stop-color="#46526a"/><stop offset=".44" stop-color="#121825"/><stop offset="1" stop-color="#05080f"/></radialGradient>
+      <radialGradient id="${id}-gSpec" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${id}-gWhite" cx=".34" cy=".3" r=".85"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eef3f7"/><stop offset="1" stop-color="#d3dde5"/></radialGradient>
       <filter id="${id}-shadow" x="-30%" y="-30%" width="170%" height="170%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.5" flood-color="#000" flood-opacity=".42"/></filter>`;
     this.el("rect", { x: .5, y: .5, width: W - 1, height: W - 1, rx: 4, class: "board-surface" });
     const end = PAD + (n - 1) * CELL;
@@ -234,8 +235,12 @@ class BoardView {
     const [x, y] = this.xy(r, c);
     this.placed.push({ r, c, color, num });
     const g = this.el("g", { class: "stone" + (animate ? " drop" : ""), "data-rc": `${r},${c}` }, this.stones);
-    const rim = color === "black" ? { stroke: "rgba(255,255,255,.2)", "stroke-width": 1 } : { stroke: theme().whiteEdge, "stroke-width": 1 };
+    const rim = color === "black" ? { stroke: "rgba(3,6,12,.9)", "stroke-width": 1 } : { stroke: theme().whiteEdge, "stroke-width": 1 };
     this.el("circle", { cx: x, cy: y, r: 17, fill: `url(#${this.id}-${color === "black" ? "gBlack" : "gWhite"})`, filter: `url(#${this.id}-shadow)`, ...rim }, g);
+    if (color === "black") {
+      this.el("circle", { cx: x, cy: y, r: 15.4, fill: "none", stroke: theme().blackRim, "stroke-width": 1, "pointer-events": "none" }, g);
+      this.el("ellipse", { cx: x - 5.5, cy: y - 7, rx: 5.5, ry: 3.6, fill: `url(#${this.id}-gSpec)`, "pointer-events": "none" }, g);
+    }
     if (this.numbers && num) {
       this.el("text", { x, y: y + 4, "text-anchor": "middle", class: "move-num", fill: color === "black" ? "#fff" : "#16202e" }, g).textContent = num;
     }
@@ -314,7 +319,7 @@ function paintPlayerStones() {
   $("stoneWhite").innerHTML = `${stoneIcon("white")} White`;
 }
 function applyTheme(key) {
-  themeKey = THEMES[key] ? key : "navy";
+  themeKey = THEMES[key] ? key : "slate";
   store.set("gomoku-theme", themeKey);
   [Game.view, Watch.view, Lab.heurView, Tutor.view].forEach((v) => v && v.redraw());
   renderThemes(); paintPlayerStones();
@@ -322,7 +327,7 @@ function applyTheme(key) {
 function stoneIcon(color) { return `<i class="mini ${color}"></i>`; }
 function themePreview(t) {
   const stone = (x, y, color) => color === "black"
-    ? `<circle cx="${x}" cy="${y}" r="8" fill="#0a0f1a" stroke="rgba(255,255,255,.25)"/>`
+    ? `<circle cx="${x}" cy="${y}" r="8" fill="#121825" stroke="rgba(255,255,255,.45)"/>`
     : `<circle cx="${x}" cy="${y}" r="8" fill="#eef4f7" stroke="${t.whiteEdge}"/>`;
   let grid = "";
   for (let i = 0; i < 5; i++) {
@@ -787,7 +792,23 @@ async function startGame(cfg) {
 }
 
 /* ------------------------------------------------------------------ player, rating, scoreboard */
-const AVATARS = ["🙂", "😎", "🦄", "🐱", "🐶", "🐼", "🦁", "🐸", "🐧", "🚀", "⚽", "🌟"];
+const LOCK_SVG = '<svg class="lock-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const AVATARS = ["dot", "ring", "sq", "dia", "tri", "plus", "bars", "x"];
+const AV_SHAPES = {
+  dot: '<circle cx="12" cy="12" r="7" fill="currentColor"/>',
+  ring: '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.4"/>',
+  sq: '<rect x="5" y="5" width="14" height="14" fill="currentColor"/>',
+  dia: '<path d="M12 3l9 9-9 9-9-9z" fill="currentColor"/>',
+  tri: '<path d="M12 4l9 15H3z" fill="currentColor"/>',
+  plus: '<path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.6" fill="none"/>',
+  bars: '<path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="2.4" fill="none"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" fill="none"/>',
+};
+// a geometric mark for known keys; anything else (old emoji avatars) falls back to the initial
+function avatarHtml(a, name) {
+  return AV_SHAPES[a] ? `<svg class="av-mark" viewBox="0 0 24 24" aria-hidden="true">${AV_SHAPES[a]}</svg>`
+    : `<span class="av-init">${escapeHtml(String(name || "?").trim().charAt(0).toUpperCase() || "?")}</span>`;
+}
 const Player = {
   guest: false,
   get() { return store.get("gomoku-player", null); },
@@ -799,20 +820,20 @@ function askPlayer() {
     const cur = Player.get();
     let avatar = (cur && cur.avatar) || AVATARS[0];
     $("playerName").value = cur ? cur.name : "";
-    const paint = () => { $("avatarPick").innerHTML = AVATARS.map((a) => `<button class="av ${a === avatar ? "active" : ""}" data-av="${a}" role="radio" aria-checked="${a === avatar}">${a}</button>`).join(""); };
+    const paint = () => { $("avatarPick").innerHTML = AVATARS.map((a) => `<button class="av ${a === avatar ? "active" : ""}" data-av="${a}" role="radio" aria-label="${a}" aria-checked="${a === avatar}">${avatarHtml(a)}</button>`).join(""); };
     paint();
     $("avatarPick").onclick = (e) => { const b = e.target.closest("[data-av]"); if (b) { avatar = b.dataset.av; paint(); } };
     $("playerModal").hidden = false; $("playerName").focus();
     const done = async (save) => {
       const name = $("playerName").value.trim();
-      if (save && !name) { toast("Please type your name "); $("playerName").focus(); return; }
+      if (save && !name) { toast("Enter a name to continue."); $("playerName").focus(); return; }
       $("playerModal").hidden = true;
       if (save) {
         Player.guest = false;
         try {
           const prof = await api("/api/player", { name, avatar });
           Player.set({ name: prof.name, avatar: prof.avatar, rating: prof.rating, title: prof.title, icon: prof.icon });
-          toast(`Hi ${prof.name}! Your rating: ${prof.rating}`);
+          toast(`Signed in as ${prof.name}. Rating ${prof.rating}.`);
         } catch (err) { Player.set({ name, avatar }); }
       } else Player.guest = true;
       resolve(Player.get());
@@ -825,7 +846,7 @@ function askPlayer() {
 function renderPlayerChip() {
   const p = Player.get();
   $("playerChip").innerHTML = p
-    ? `Playing as <b>${p.avatar} ${escapeHtml(p.name)}</b>${p.rating ? ` · ${p.icon || "★"} ${p.rating} ${p.title || ""}` : ""} · <button class="link" id="chipChange">change</button>`
+    ? `Playing as <b>${avatarHtml(p.avatar, p.name)} ${escapeHtml(p.name)}</b>${p.rating ? ` · ${p.rating} ${p.title || ""}` : ""} · <button class="link" id="chipChange">change</button>`
     : `<button class="link" id="chipChange">Set your name to get a rating</button>`;
   $("chipChange").onclick = () => askPlayer();
 }
@@ -842,7 +863,7 @@ function renderGameRating(a, r, who) {
       <span>Accuracy <b>${a.accuracy}%</b> · ${a.grade_words}</span>
       ${r ? `<div class="rating-line">Rating ${r.rating_before} → <b>${r.rating_after}</b>
               <span class="${r.rating_change >= 0 ? "up" : "down"}">${r.rating_change >= 0 ? "+" : ""}${r.rating_change}</span>
-              · ${r.icon} ${r.title}</div>`
+              · ${r.title}</div>`
           : guestRatingHint()}
     </div>`;
   box.hidden = false;
@@ -896,11 +917,11 @@ const Scores = {
       const res = { win: "Won", loss: "Lost", draw: "Draw" };
       $("scoresMain").innerHTML = `
         <div class="panel profile">
-          <div class="profile-face">${p.avatar}</div>
+          <div class="profile-face">${avatarHtml(p.avatar, p.name)}</div>
           <div class="profile-info">
             <h3>${escapeHtml(p.name)} <button class="link" id="switchPlayer">switch player</button>
               <button class="link danger-link" id="deleteMe">delete my data</button></h3>
-            <div class="profile-rating"><b>${p.rating}</b> <span>${p.icon} ${p.title}${p.rank ? ` · rank #${p.rank}` : ""}</span></div>
+            <div class="profile-rating"><b>${p.rating}</b> <span>${p.title}${p.rank ? ` · rank #${p.rank}` : ""}</span></div>
             <div class="profile-stats">
               <span><b>${p.games}</b> games</span><span><b>${p.wins}</b> wins</span><span><b>${p.draws}</b> draws</span>
               <span><b>${p.losses}</b> losses</span><span><b>${p.avg_accuracy ?? "–"}%</b> avg accuracy</span>
@@ -934,9 +955,9 @@ const Scores = {
     $("leaderboard").innerHTML = d.leaderboard.length ? d.leaderboard.map((r) => `
       <div class="lb-row ${me && r.name.toLowerCase() === me.name.toLowerCase() ? "me" : ""}">
         <span class="lb-rank">${r.rank <= 3 ? ["", "", ""][r.rank - 1] : r.rank}</span>
-        <span class="lb-name">${r.avatar} ${escapeHtml(r.name)}<small>${r.icon} ${r.title} · ${r.games} games</small></span>
+        <span class="lb-name">${avatarHtml(r.avatar, r.name)} ${escapeHtml(r.name)}<small>${r.title} · ${r.games} games</small></span>
         <b class="lb-rating">${r.rating}</b>
-      </div>`).join("") : `<p class="small">Nobody has a rating yet. Be the first!</p>`;
+      </div>`).join("") : `<p class="small">No ratings yet. Finish a game against an engine to appear here.</p>`;
     $("robotRatings").innerHTML = d.robots.map((r) => `<div><span>${OPPONENTS[r.level].face} ${r.name}</span><b>${r.rating}</b></div>`).join("");
   },
 };
@@ -961,7 +982,7 @@ const Progress = {
     this.data.stars[idx] = Math.max(prev, stars);
     this.data.unlocked = Math.max(this.data.unlocked, Math.min(LEVELS.length, idx + 2));
     store.set("gomoku-progress", this.data);
-    if (!prev) toast(idx + 1 < LEVELS.length ? `Level ${idx + 2} unlocked!` : "You finished every level!");
+    if (!prev) toast(idx + 1 < LEVELS.length ? `Level ${idx + 2} unlocked.` : "All levels complete.");
   },
   reset() { this.data = { unlocked: 1, stars: {} }; store.set("gomoku-progress", this.data); },
 };
@@ -973,10 +994,10 @@ function renderLevels() {
   $("levelGrid").innerHTML = LEVELS.map((L, i) => {
     const op = OPPONENTS[L.op], locked = i + 1 > d.unlocked, stars = d.stars[i] || 0;
     return `<button class="level ${locked ? "locked" : ""} ${stars ? "done" : ""}" data-level-idx="${i}" ${locked ? "aria-disabled=\"true\"" : ""}>
-      <span class="lv-num">${locked ? "" : i + 1}</span>
+      <span class="lv-num">${locked ? LOCK_SVG : i + 1}</span>
       <span class="lv-face">${op.face}</span>
       <b>${L.title}</b>
-      <small>${L.size}×${L.size} · vs ${op.name}${L.first === "ai" ? " · they start" : ""}</small>
+      <small>${L.size}×${L.size} · vs ${op.name}${L.first === "ai" ? " · engine first" : ""}</small>
       <span class="lv-stars">${[1, 2, 3].map((s) => `<i class="${s <= stars ? "" : "off"}">★</i>`).join("")}</span>
     </button>`;
   }).join("");
@@ -985,7 +1006,7 @@ $("levelGrid").addEventListener("click", (e) => {
   const b = e.target.closest("[data-level-idx]");
   if (!b) return;
   const i = +b.dataset.levelIdx;
-  if (i + 1 > Progress.data.unlocked) { Sound.oops(); toast(`Beat level ${i} first to unlock this one! `); return; }
+  if (i + 1 > Progress.data.unlocked) { Sound.oops(); toast(`Beat level ${i} first to unlock this one.`); return; }
   playLevel(i);
 });
 function playLevel(i) {
@@ -1050,6 +1071,8 @@ const Watch = {
   },
   size() { return +$("watchSize").value; },
   robot(id) { return OPPONENTS[$(id === "A" ? "watchA" : "watchB").value]; },
+  // when both sides use the same agent, tell them apart: "Rule-based A" and "Rule-based B"
+  label(id) { const o = this.robot(id); return this.level("A") === this.level("B") ? `${o.name} ${id}` : o.name; },
   level(id) { return $(id === "A" ? "watchA" : "watchB").value; },
   idOf(color) { return this.colors.A === color ? "A" : "B"; },
 
@@ -1058,7 +1081,7 @@ const Watch = {
     const s = this.score, a = this.robot("A"), b = this.robot("B");
     $("scA").textContent = s.A; $("scB").textContent = s.B; $("scDraw").textContent = s.draw;
     $("scAFace").textContent = a.face; $("scBFace").textContent = b.face;
-    $("scAName").textContent = `${a.name} wins`; $("scBName").textContent = `${b.name} wins`;
+    $("scAName").textContent = `${this.label("A")} wins`; $("scBName").textContent = `${this.label("B")} wins`;
     $("scBlack").textContent = s.black; $("scWhite").textContent = s.white;
     const decided = s.black + s.white;
     $("colourNote").textContent = decided
@@ -1071,7 +1094,7 @@ const Watch = {
       const body = s && s.moves
         ? `${s.moves} moves · ${Math.round(s.nodes / s.moves).toLocaleString()} boards/move · ${Math.round(s.ms / s.moves).toLocaleString()} ms/move<br><i>${kid(s.last)}</i>`
         : o.blurb;
-      return `<div class="rs"><b>${color === "black" ? "" : ""} ${o.face} ${o.name}</b> <small>(${color} this game)</small><br>${body}</div>`;
+      return `<div class="rs"><b>${this.label(id)}</b> <small>(${color} this game)</small><br>${body}</div>`;
     }).join("");
   },
   reset() {
@@ -1093,10 +1116,17 @@ const Watch = {
     this.colors = swap && secondOfPair ? { A: "white", B: "black" } : { A: "black", B: "white" };
     const stones = +$("watchOpening").value;
     // a new random opening for every pair of games; the second game of a pair reuses it with colours swapped
-    if (!swap || !secondOfPair || this.opening.length !== stones) {
+    // identical agents on both sides gain nothing from colour-swapped pairs, so every game gets its own opening
+    const sameAgent = this.level("A") === this.level("B");
+    const fresh = !swap || sameAgent || !secondOfPair || this.opening.length !== stones;
+    if (fresh) this.pairSeed = Math.floor(Math.random() * 2 ** 30);
+    // one seed per game: seed >> 1 picks the opening (shared by a swapped pair), the seed itself drives tie-breaks.
+    // agents.play_battle(level_a, level_b, seed, a_black) replays the game exactly.
+    this.seed = this.pairSeed * 2 + (fresh ? 0 : 1);
+    if (fresh) {
       this.opening = [];
       if (stones) {
-        try { this.opening = (await api(`/api/opening?stones=${stones}&size=${this.size()}`)).moves; }
+        try { this.opening = (await api(`/api/opening?stones=${stones}&size=${this.size()}&seed=${this.pairSeed}`)).moves; }
         catch (err) { console.error(err); }
       }
     }
@@ -1108,9 +1138,9 @@ const Watch = {
   async loop(gen) {
     while (this.running && gen === this.gen) {
       const color = this.moves.length % 2 === 0 ? "black" : "white", id = this.idOf(color), robot = this.robot(id);
-      $("watchStatus").textContent = `Game ${this.gameNo}: ${robot.face} ${robot.name} (${color}) is thinking… · ${this.gamesLeft} game(s) left`;
+      $("watchStatus").textContent = `Game ${this.gameNo}: ${this.label(id)} (${color}) is thinking… · seed ${this.seed} · ${this.gamesLeft} game(s) left`;
       let res;
-      try { res = await api("/api/ai-move", { board: this.board, color, level: this.level(id) }); }
+      try { res = await api("/api/ai-move", { board: this.board, color, level: this.level(id), seed: this.seed }); }
       catch (err) { $("watchStatus").textContent = "Can't reach the Python server. Is web_app.py running?"; this.running = false; return; }
       while (!this.running && gen === this.gen) await sleep(150);  // paused mid-think: hold the move
       if (gen !== this.gen) return;
@@ -1131,8 +1161,8 @@ const Watch = {
     else { this.score[winner]++; this.score[this.idOf(winner)]++; }
     store.set("gomoku-score2", this.score); this.renderScore();
     const who = winner === "draw" ? null : this.robot(this.idOf(winner));
-    $("watchStatus").textContent = winner === "draw" ? `Game ${this.gameNo}: draw!` : `Game ${this.gameNo}: ${who.face} ${who.name} (${winner}) wins in ${this.moves.length} moves!`;
-    const black = this.robot(this.idOf("black")).name, white = this.robot(this.idOf("white")).name;
+    $("watchStatus").textContent = winner === "draw" ? `Game ${this.gameNo}: draw.` : `Game ${this.gameNo}: ${this.label(this.idOf(winner))} (${winner}) wins in ${this.moves.length} moves. Seed ${this.seed}.`;
+    const black = this.label(this.idOf("black")), white = this.label(this.idOf("white"));
     api("/api/save", { mode: "watch", winner, moves: this.moves, size: this.size(), black, white }).catch(() => {});
     this.gamesLeft--;
     if (this.gamesLeft > 0 && this.running && gen === this.gen) {
@@ -1330,7 +1360,7 @@ const Lab = {
 
 /* ------------------------------------------------------------------ AI tutor */
 const LESSONS = [
-  { kind: "win", seed: 3, title: "Finish the job", idea: "When you have four in a row with an empty end, play there and win. <b>Always check this first!</b>" },
+  { kind: "win", seed: 3, title: "Finish the job", idea: "When you have four in a row with an empty end, play there and win. <b>Always check this first.</b>" },
   { kind: "block", seed: 3, title: "Block the four", idea: "If your opponent has four in a row, you <b>must</b> block the empty end, or you lose on the next move." },
   { kind: "open_three", seed: 3, title: "Stop the open three", idea: "Three in a row with space on <b>both</b> sides turns into an open four, which can't be stopped. Block one end now." },
   { kind: "open_four", seed: 3, title: "The open four", idea: "Four in a row with <b>both ends empty</b>: your opponent can block only one end, so you win next move." },
@@ -1438,13 +1468,13 @@ const Tutor = {
 /* ------------------------------------------------------------------ learn page + hero */
 function miniBoard(stones, size = 7, ring = []) {
   const s = 24, p = 14, w = p * 2 + (size - 1) * s;
-  let out = `<svg viewBox="0 0 ${w} ${w}"><rect width="${w}" height="${w}" rx="4" fill="#122b4d" stroke="#2a4a73"/>`;
+  let out = `<svg viewBox="0 0 ${w} ${w}"><rect width="${w}" height="${w}" rx="4" fill="#557591" stroke="#9bb4ca"/>`;
   for (let i = 0; i < size; i++) {
-    out += `<line x1="${p}" y1="${p + i * s}" x2="${p + (size - 1) * s}" y2="${p + i * s}" stroke="#2f5079" stroke-width="1"/>`;
-    out += `<line x1="${p + i * s}" y1="${p}" x2="${p + i * s}" y2="${p + (size - 1) * s}" stroke="#2f5079" stroke-width="1"/>`;
+    out += `<line x1="${p}" y1="${p + i * s}" x2="${p + (size - 1) * s}" y2="${p + i * s}" stroke="#2a4258" stroke-width="1"/>`;
+    out += `<line x1="${p + i * s}" y1="${p}" x2="${p + i * s}" y2="${p + (size - 1) * s}" stroke="#2a4258" stroke-width="1"/>`;
   }
   for (const [r, c, col] of stones) {
-    out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="10" fill="${col === "b" ? "#0a0f1a" : "#eef4f7"}" stroke="${col === "b" ? "rgba(255,255,255,.25)" : "rgba(0,0,0,.2)"}"/>`;
+    out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="10" fill="${col === "b" ? "#121825" : "#eef4f7"}" stroke="${col === "b" ? "rgba(255,255,255,.5)" : "rgba(0,0,0,.2)"}"/>`;
   }
   for (const [r, c] of ring) out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="11.5" fill="none" stroke="#35d39a" stroke-width="2"/>`;
   return out + "</svg>";
@@ -1452,16 +1482,17 @@ function miniBoard(stones, size = 7, ring = []) {
 function buildLearn() {
   const cards = [
     { t: "Take turns", d: "Black goes first. Then you take turns putting one stone on any empty crossing.", b: miniBoard([[3, 3, "b"], [3, 4, "w"], [4, 4, "b"]]) },
-    { t: "Make five in a row", d: "Get 5 of your stones in a line: across ➡, down or diagonal ↘ ↗.", b: miniBoard([[1, 1, "b"], [2, 2, "b"], [3, 3, "b"], [4, 4, "b"], [5, 5, "b"], [2, 4, "w"], [3, 4, "w"]], 7, [[1, 1], [5, 5]]) },
-    { t: "Block your opponent", d: "If your opponent has 4 in a row, put a stone at the end to stop them!", b: miniBoard([[3, 1, "w"], [3, 2, "w"], [3, 3, "w"], [3, 4, "w"], [3, 5, "b"], [2, 3, "b"]], 7, [[3, 0]]) },
+    { t: "Make five in a row", d: "Get 5 of your stones in a line: across, down or diagonally.", b: miniBoard([[1, 1, "b"], [2, 2, "b"], [3, 3, "b"], [4, 4, "b"], [5, 5, "b"], [2, 4, "w"], [3, 4, "w"]], 7, [[1, 1], [5, 5]]) },
+    { t: "Block your opponent", d: "If your opponent has 4 in a row, put a stone at the end to stop them.", b: miniBoard([[3, 1, "w"], [3, 2, "w"], [3, 3, "w"], [3, 4, "w"], [3, 5, "b"], [2, 3, "b"]], 7, [[3, 0]]) },
     { t: "Watch for open threes", d: "Three in a row with empty space on both sides is dangerous. Block one end early.", b: miniBoard([[3, 2, "w"], [3, 3, "w"], [3, 4, "w"], [4, 3, "b"]], 7, [[3, 1], [3, 5]]) },
-    { t: "Double attack!", d: "Make two threats at once. Your opponent can only block one of them!", b: miniBoard([[3, 1, "b"], [3, 2, "b"], [3, 3, "b"], [1, 4, "b"], [2, 4, "b"], [4, 5, "w"], [5, 5, "w"]], 7, [[3, 4]]) },
-    { t: "Climb the levels", d: "10 levels from to . Boards grow from 9×9 to 15×15. Pause any time, and continue later!", b: `<div style="font-size:44px;padding:26px 0"></div>` },
+    { t: "Double attack", d: "Make two threats at once. Your opponent can only block one of them.", b: miniBoard([[3, 1, "b"], [3, 2, "b"], [3, 3, "b"], [1, 4, "b"], [2, 4, "b"], [4, 5, "w"], [5, 5, "w"]], 7, [[3, 4]]) },
+    { t: "Climb the levels", d: "Ten levels, from random guessing to iterative deepening. Boards grow from 9×9 to 15×15. Pause any time and continue later.", b: miniBoard([[3, 3, "b"], [3, 4, "w"], [4, 4, "b"], [2, 2, "w"]]) },
   ];
   $("learnGrid").innerHTML = cards.map((c, i) => `<div class="learn-card"><span class="step">${i + 1}</span><h3>${c.t}</h3>${c.b}<p>${c.d}</p></div>`).join("");
 }
 function buildHero() {
   const svg = document.querySelector(".hero-board");
+  if (!svg) return;
   svg.innerHTML = miniBoard([[1, 1, "b"], [2, 2, "b"], [3, 3, "b"], [4, 4, "b"], [2, 3, "w"], [3, 2, "w"], [4, 3, "w"], [1, 3, "w"], [5, 2, "b"]], 8, [[5, 5]])
     .replace(/^<svg[^>]*>|<\/svg>$/g, "");
   svg.setAttribute("viewBox", "0 0 196 196");
