@@ -209,3 +209,5 @@ __marimo__/
 # Local tool settings and games recorded by the web interface during play/testing
 .claude/
 games/web/
+# Player database (names, ratings, game history) - local only
+data/

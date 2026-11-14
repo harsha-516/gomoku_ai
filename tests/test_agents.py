@@ -217,3 +217,35 @@ def test_every_agent_declares_its_ai_category():
         assert cls.agent_type and cls.search and cls.knowledge
     assert BlindMinimaxAgent.search.startswith("Uninformed")
     assert AlphaBetaAgent.search.startswith("Informed")
+
+
+def test_seeded_agents_repeat_and_unseeded_ones_vary():
+    from agents import empty_board, make_agent
+    s = empty_board(15)
+    s[7][7], s[7][8] = "black", "white"
+    for name in ("Medium", "Minimax", "Hard", "Blind"):
+        picks = {make_agent(name, seed=5).choose_move(s, "black") for _ in range(3)}
+        assert len(picks) == 1, f"{name} must repeat for the same seed"
+
+
+def test_alpha_beta_tie_break_keeps_the_same_value():
+    # the random tie-break must never change how good the chosen move is
+    from agents import AlphaBetaAgent, MinimaxAgent, empty_board
+    s = empty_board(15)
+    for r, c, p in [(7, 7, "black"), (7, 8, "white"), (8, 8, "black"), (6, 7, "white")]:
+        s[r][c] = p
+    ref = MinimaxAgent(depth=2, max_candidates=12)
+    ref.choose_move(s, "black")
+    for seed in range(4):
+        ab = AlphaBetaAgent(depth=2, max_candidates=12, seed=seed)
+        ab.choose_move(s, "black")
+        assert ab.stats.score == ref.stats.score
+
+
+def test_play_battle_replays_from_its_seed():
+    from agents import play_battle
+    a = play_battle("Medium", "Medium", 777, a_black=True, stones=3)
+    b = play_battle("Medium", "Medium", 777, a_black=True, stones=3)
+    assert a["moves"] == b["moves"] and a["winner"] == b["winner"]
+    c = play_battle("Medium", "Medium", 778, a_black=True, stones=3)
+    assert c["moves"] != a["moves"]

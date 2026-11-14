@@ -7,69 +7,45 @@ const CELL = 40, PAD = 40;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const OPPONENTS = {
-  Easy:    { face: "🐣", name: "Pip the Chick", color: "#1baf7a", stars: 1, tech: "Random AI (uninformed)",
-             blurb: "Just learning! Pip picks any empty spot at random." },
-  Blind:   { face: "🦇", name: "Batty", color: "#52514e", stars: 1, tech: "Blind Minimax (uninformed search)",
-             blurb: "Flies blind! Batty checks every square but only knows win or lose." },
-  Medium:  { face: "🦊", name: "Foxy", color: "#2a78d6", stars: 2, tech: "Rule-Based AI (goal-based)",
-             blurb: "Follows clever rules: win, block, then attack." },
-  Minimax: { face: "🐢", name: "Turtle Max", color: "#eb6834", stars: 2, tech: "Minimax + heuristic (informed)",
-             blurb: "Slow and steady: scores every board 2 moves ahead." },
-  Hard:    { face: "🦉", name: "Professor Owl", color: "#6250d6", stars: 3, tech: "Minimax + Alpha-Beta pruning",
-             blurb: "Thinks 3 moves ahead and skips useless branches." },
-  Expert:  { face: "🐉", name: "Draco", color: "#e34948", stars: 4, tech: "Iterative deepening + memory",
-             blurb: "Thinks as deep as it can for 2 seconds. Good luck!" },
+  Easy:    { face: "", name: "Random", short: "Random", tier: "Beginner", stars: 1, tech: "Random agent, uninformed",
+             blurb: "Picks any empty square at random. Useful for learning the rules." },
+  Blind:   { face: "", name: "Blind search", short: "Blind", tier: "Beginner", stars: 1, tech: "Blind minimax, uninformed search",
+             blurb: "Searches every square but can only tell a win from a loss, so most moves look equal." },
+  Medium:  { face: "", name: "Rule-based", short: "Rules", tier: "Intermediate", stars: 2, tech: "Goal-based agent",
+             blurb: "Follows fixed rules in order: win, block, then build its own line." },
+  Minimax: { face: "", name: "Minimax", short: "Minimax", tier: "Intermediate", stars: 2, tech: "Minimax with a heuristic, informed search",
+             blurb: "Scores every board two moves ahead and plays the best result." },
+  Hard:    { face: "", name: "Alpha-beta", short: "Alpha-beta", tier: "Advanced", stars: 3, tech: "Minimax with alpha-beta pruning",
+             blurb: "Looks three moves ahead and skips branches that cannot change the decision." },
+  Expert:  { face: "", name: "Deep search", short: "Deep", tier: "Expert", stars: 4, tech: "Iterative deepening with a transposition table",
+             blurb: "Searches as deep as it can in two seconds and remembers boards it has seen." },
 };
 
 const LEVELS = [
-  { size: 9, op: "Easy", title: "First Steps",
-    learn: "Pip is a <b>simple reflex agent</b> with <b>no search</b>: it picks randomly. That's an <b>uninformed</b> strategy." },
-  { size: 9, op: "Blind", title: "Searching in the Dark",
-    learn: "Batty uses <b>uninformed (blind) search</b>: it looks at every square, about 6,000 boards per move on 9×9, but only knows win or lose." },
-  { size: 11, op: "Medium", title: "The Clever Fox",
-    learn: "Foxy is a <b>goal-based agent</b>: fixed rules (win, block, attack) lead it towards five in a row." },
-  { size: 11, op: "Minimax", title: "Slow and Steady",
-    learn: "Turtle Max uses <b>Minimax with a heuristic function</b>: an <b>informed search</b> that gives every board a score." },
-  { size: 13, op: "Medium", first: "ai", title: "Fox Goes First",
+  { size: 9, op: "Easy", title: "First steps",
+    learn: "The Random opponent is a <b>simple reflex agent</b> with <b>no search</b>: it picks a square at random. That is an <b>uninformed</b> strategy." },
+  { size: 9, op: "Blind", title: "Searching in the dark",
+    learn: "Blind search is <b>uninformed</b>: it looks at every square, about 6,000 boards per move on 9x9, but only knows win or lose." },
+  { size: 11, op: "Medium", title: "Rule-based play",
+    learn: "The rule-based opponent is a <b>goal-based agent</b>: fixed rules (win, block, attack) lead it towards five in a row." },
+  { size: 11, op: "Minimax", title: "Minimax",
+    learn: "Minimax uses a <b>heuristic function</b>: an <b>informed search</b> that gives every board a score." },
+  { size: 13, op: "Medium", first: "ai", title: "Moving second",
     learn: "In Gomoku, <b>moving first is an advantage</b>. Can you still win as White?" },
-  { size: 13, op: "Hard", title: "The Wise Owl",
+  { size: 13, op: "Hard", title: "Alpha-beta pruning",
     learn: "<b>Alpha-beta pruning</b> gives the same answer as minimax but skips branches that cannot change the decision." },
-  { size: 15, op: "Hard", title: "The Full Board",
+  { size: 15, op: "Hard", title: "The full board",
     learn: "A bigger board means <b>more states</b>. <b>Candidate move generation</b> keeps the search small by looking only near the stones." },
-  { size: 15, op: "Hard", first: "ai", title: "Owl Strikes First",
-    learn: "Professor Owl is a <b>utility-based agent</b>: it picks the move with the highest heuristic utility." },
-  { size: 15, op: "Expert", title: "Dragon's Den",
-    learn: "Draco uses <b>iterative deepening</b> (search deeper and deeper until time runs out) and a <b>transposition table</b> (memory of boards it has seen)." },
-  { size: 15, op: "Expert", first: "ai", title: "Boss Battle",
-    learn: "You beat the strongest agent! You now know the whole path from <b>uninformed</b> to <b>informed</b> adversarial search. 🏆" },
+  { size: 15, op: "Hard", first: "ai", title: "Engine moves first",
+    learn: "The alpha-beta opponent is a <b>utility-based agent</b>: it picks the move with the highest heuristic utility." },
+  { size: 15, op: "Expert", title: "Iterative deepening",
+    learn: "Deep search uses <b>iterative deepening</b> (search deeper and deeper until time runs out) and a <b>transposition table</b> (memory of boards it has seen)." },
+  { size: 15, op: "Expert", first: "ai", title: "Final",
+    learn: "You beat the strongest agent. You now know the path from <b>uninformed</b> to <b>informed</b> adversarial search." },
 ];
 
-const KID_REASONS = {
-  "Completes five in a row": "Five in a row, I win! 🎉",
-  "Blocks opponent's five": "Phew! I blocked your four just in time. 😅",
-  "Creates an open four (unstoppable)": "Four in a row with both ends open. You can't stop both! 😎",
-  "Creates a double threat (fork)": "A double attack: two threats at once! ⚡",
-  "Blocks opponent's open three": "I saw your open three and blocked it. 👀",
-  "Creates a double open three (fork)": "Two open threes at once, sneaky! 🦊",
-  "Creates a four (forcing move)": "Four in a row! You have to block me now. 😏",
-  "Prevents an opponent fork": "I stopped your double attack. 🛡️",
-  "Creates an open three": "Three in a row with space on both sides. 👍",
-  "Restricts opponent's development": "Getting in your way! 🚧",
-  "Builds own shape": "Building my line, stone by stone. 🧱",
-  "Positional / board control": "Taking a good spot near the middle. 📍",
-  "Random legal move": "Eeny, meeny, miny, moe… here! 🎲",
-  "Sees no win or loss within reach, so every move looks the same": "I can't see any win or loss nearby… every square looks the same to me! 🦇",
-  "Ran out of search budget: the board is too big to search blindly": "Too many squares to check without clues! I'll just guess. 😵",
-  "Rule 1: win immediately": "Five in a row, I win! 🎉",
-  "Rule 2: block opponent's five": "Phew! I blocked your four. 😅",
-  "Rule 3: create an open four": "Open four, you can't stop both ends! 😎",
-  "Rule 4: create a four-three fork": "A double attack! ⚡",
-  "Rule 4: create a double three": "Two open threes at once! 🦊",
-  "Rule 5: block opponent's open three": "I blocked your open three. 👀",
-  "Rule 5: stop opponent fork": "I stopped your double attack. 🛡️",
-  "Rule 6: best attack + defence value": "This spot helps me and blocks you. 🎯",
-};
-const kid = (reason) => KID_REASONS[reason] || reason || "Hmm, this looks good.";
+// The Python engine already returns plain-language reasons; show them as they are.
+const kid = (reason) => reason || "Best evaluated move.";
 
 /* ------------------------------------------------------------------ utils */
 const $ = (id) => document.getElementById(id);
@@ -146,8 +122,8 @@ const Sound = {
 };
 function setSound(on) {
   Sound.on = on; store.set("gomoku-sound", on);
-  $("soundBtn").textContent = on ? "🔊" : "🔇";
-  $("pSoundBtn").textContent = on ? "🔊 Sound: on" : "🔇 Sound: off";
+  $("soundBtn").textContent = on ? "Sound on" : "Sound off";
+  $("pSoundBtn").textContent = on ? "Sound: on" : "Sound: off";
 }
 
 /* ------------------------------------------------------------------ confetti */
@@ -173,6 +149,16 @@ function confetti() {
   })(performance.now());
 }
 
+/* ------------------------------------------------------------------ board themes */
+// Two boards, one design system: a mid-tone steel-blue slate (default) and a light alternate.
+const THEMES = {
+  slate: { name: "Slate", accent: "#35d39a", fill: "#557591", edge: "#9bb4ca", line: "#2a4258", star: "#1f3346", coord: "#ffffff", whiteEdge: "rgba(0,0,0,.28)", blackRim: "rgba(255,255,255,.34)" },
+  light: { name: "Light", accent: "#0b8f64", fill: "#eef4f7", edge: "#c3d1dc", line: "#b4c4d2", star: "#8fa5b8", coord: "#587087", whiteEdge: "#5f7388", blackRim: "rgba(255,255,255,.22)" },
+};
+let themeKey = store.get("gomoku-theme", "slate");
+if (!THEMES[themeKey]) themeKey = "slate";
+const theme = () => THEMES[themeKey];
+
 /* ------------------------------------------------------------------ board view */
 class BoardView {
   constructor(svg, { onClick, numbers = false, size = 15, coords = true } = {}) {
@@ -186,37 +172,41 @@ class BoardView {
     return e;
   }
   xy(r, c) { return [PAD + c * CELL, PAD + r * CELL]; }
-  setSize(n) { this.n = n; this.draw(); }
+  setSize(n) { this.n = n; this.placed = []; this.last = null; this.win = null; this.draw(); }
+  redraw() {
+    // re-draw the board (e.g. a new theme) keeping the stones, last move and winning line
+    const placed = this.placed, last = this.last, win = this.win;
+    this.draw(); this.placed = [];
+    placed.forEach((p) => this.addStone(p.r, p.c, p.color, p.num, false));
+    this.markLast(...(last || []));
+    if (win) this.showWin(win);
+  }
   draw() {
-    const svg = this.svg, n = this.n, W = PAD * 2 + (n - 1) * CELL, id = this.id;
+    const svg = this.svg, n = this.n, W = PAD * 2 + (n - 1) * CELL, id = this.id, t = theme();
     svg.setAttribute("viewBox", `0 0 ${W} ${W}`);
+    for (const [k, v] of Object.entries({ accent: t.accent, fill: t.fill, edge: t.edge, line: t.line, star: t.star, coord: t.coord })) svg.style.setProperty(`--board-${k}`, v);
     svg.innerHTML = "";
     const defs = this.el("defs", {});
     defs.innerHTML = `
-      <linearGradient id="${id}-wood" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#f6d49c"/><stop offset=".5" stop-color="#ebb771"/><stop offset="1" stop-color="#dfa35c"/>
-      </linearGradient>
-      <radialGradient id="${id}-gBlack" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#777"/><stop offset=".55" stop-color="#1b1b1b"/><stop offset="1" stop-color="#000"/></radialGradient>
-      <radialGradient id="${id}-gWhite" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".7" stop-color="#e9e9e9"/><stop offset="1" stop-color="#c8c8c8"/></radialGradient>
-      <filter id="${id}-shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="1.8" flood-opacity=".4"/></filter>`;
-    this.el("rect", { x: 0, y: 0, width: W, height: W, rx: 26, fill: `url(#${id}-wood)` });
-    for (let i = 0; i < Math.ceil(W / 72); i++) {
-      this.el("path", { d: `M0 ${30 + i * 72} Q ${W / 2} ${10 + i * 72 + (i % 2) * 30} ${W} ${36 + i * 72}`, stroke: "#c98f4e", "stroke-width": 1.2, fill: "none", opacity: 0.35 });
-    }
+      <radialGradient id="${id}-gBlack" cx=".34" cy=".3" r=".8"><stop offset="0" stop-color="#46526a"/><stop offset=".44" stop-color="#121825"/><stop offset="1" stop-color="#05080f"/></radialGradient>
+      <radialGradient id="${id}-gSpec" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${id}-gWhite" cx=".34" cy=".3" r=".85"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eef3f7"/><stop offset="1" stop-color="#d3dde5"/></radialGradient>
+      <filter id="${id}-shadow" x="-30%" y="-30%" width="170%" height="170%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.5" flood-color="#000" flood-opacity=".42"/></filter>`;
+    this.el("rect", { x: .5, y: .5, width: W - 1, height: W - 1, rx: 4, class: "board-surface" });
     const end = PAD + (n - 1) * CELL;
     for (let i = 0; i < n; i++) {
       const p = PAD + i * CELL;
       this.el("line", { x1: PAD, y1: p, x2: end, y2: p, class: "grid-line" });
       this.el("line", { x1: p, y1: PAD, x2: p, y2: end, class: "grid-line" });
       if (this.coords) {
-        this.el("text", { x: p, y: 22, "text-anchor": "middle", class: "coord" }).textContent = String.fromCharCode(65 + i);
-        this.el("text", { x: 18, y: p + 5, "text-anchor": "middle", class: "coord" }).textContent = i + 1;
+        this.el("text", { x: p, y: 24, "text-anchor": "middle", class: "coord" }).textContent = String.fromCharCode(65 + i);
+        this.el("text", { x: 20, y: p + 4, "text-anchor": "middle", class: "coord" }).textContent = i + 1;
       }
     }
     const m = Math.floor(n / 2), k = n >= 13 ? 3 : 2;
     const stars = n >= 9 ? [[k, k], [k, n - 1 - k], [m, m], [n - 1 - k, k], [n - 1 - k, n - 1 - k]] : [[m, m]];
-    for (const [r, c] of stars) { const [x, y] = this.xy(r, c); this.el("circle", { cx: x, cy: y, r: 4.5, class: "star" }); }
-    this.stones = this.el("g", {});
+    for (const [r, c] of stars) { const [x, y] = this.xy(r, c); this.el("circle", { cx: x, cy: y, r: 3.5, class: "star" }); }
+    this.stones = this.el("g", { class: "stones" });
     this.overlay = this.el("g", {});
     this.ghost = this.el("circle", { r: 17, class: "ghost-stone", fill: `url(#${id}-gBlack)` });
     this.hit = this.el("rect", { x: 0, y: 0, width: W, height: W, fill: "transparent" });
@@ -237,28 +227,46 @@ class BoardView {
     this.ghost.setAttribute("fill", `url(#${this.id}-${this.hoverColor === "white" ? "gWhite" : "gBlack"})`);
     this.ghost.classList.add("show");
   }
-  clear() { this.stones.innerHTML = ""; this.overlay.innerHTML = ""; this.ghost.classList.remove("show"); }
+  clear() {
+    this.stones.innerHTML = ""; this.stones.classList.remove("has-win"); this.overlay.innerHTML = ""; this.ghost.classList.remove("show");
+    this.placed = []; this.last = null; this.win = null;
+  }
   addStone(r, c, color, num, animate = true) {
     const [x, y] = this.xy(r, c);
+    this.placed.push({ r, c, color, num });
     const g = this.el("g", { class: "stone" + (animate ? " drop" : ""), "data-rc": `${r},${c}` }, this.stones);
-    this.el("circle", { cx: x, cy: y, r: 17, fill: `url(#${this.id}-${color === "black" ? "gBlack" : "gWhite"})`, filter: `url(#${this.id}-shadow)` }, g);
+    const rim = color === "black" ? { stroke: "rgba(3,6,12,.9)", "stroke-width": 1 } : { stroke: theme().whiteEdge, "stroke-width": 1 };
+    this.el("circle", { cx: x, cy: y, r: 17, fill: `url(#${this.id}-${color === "black" ? "gBlack" : "gWhite"})`, filter: `url(#${this.id}-shadow)`, ...rim }, g);
+    if (color === "black") {
+      this.el("circle", { cx: x, cy: y, r: 15.4, fill: "none", stroke: theme().blackRim, "stroke-width": 1, "pointer-events": "none" }, g);
+      this.el("ellipse", { cx: x - 5.5, cy: y - 7, rx: 5.5, ry: 3.6, fill: `url(#${this.id}-gSpec)`, "pointer-events": "none" }, g);
+    }
     if (this.numbers && num) {
-      this.el("text", { x, y: y + 4, "text-anchor": "middle", class: "move-num", fill: color === "black" ? "#fff" : "#333" }, g).textContent = num;
+      this.el("text", { x, y: y + 4, "text-anchor": "middle", class: "move-num", fill: color === "black" ? "#fff" : "#16202e" }, g).textContent = num;
     }
     this.markLast(r, c);
   }
-  removeStone(r, c) { const s = this.stones.querySelector(`[data-rc="${r},${c}"]`); if (s) s.remove(); }
+  removeStone(r, c) {
+    const s = this.stones.querySelector(`[data-rc="${r},${c}"]`); if (s) s.remove();
+    this.placed = this.placed.filter((p) => p.r !== r || p.c !== c);
+  }
   markLast(r, c) {
-    this.overlay.querySelectorAll(".last-mark, .last-ring").forEach((e) => e.remove());
-    if (r === undefined) return;
+    this.overlay.querySelectorAll(".last-ring").forEach((e) => e.remove());
+    this.last = r === undefined ? null : [r, c];
+    if (r === undefined || this.numbers) return;
     const [x, y] = this.xy(r, c);
-    this.el("circle", { cx: x, cy: y, r: 21, class: "last-ring" }, this.overlay);
-    if (!this.numbers) this.el("circle", { cx: x, cy: y, r: 4.5, class: "last-mark" }, this.overlay);
+    this.el("circle", { cx: x, cy: y, r: 21.5, class: "last-ring" }, this.overlay);
   }
   showWin(line) {
+    this.win = line;
     const [x1, y1] = this.xy(...line[0]), [x2, y2] = this.xy(...line[line.length - 1]);
-    for (const [r, c] of line) { const [x, y] = this.xy(r, c); this.el("circle", { cx: x, cy: y, r: 20, class: "win-ring" }, this.overlay); }
-    this.el("line", { x1, y1, x2, y2, class: "win-line" }, this.overlay);
+    this.stones.classList.add("has-win");
+    for (const [r, c] of line) {
+      const g = this.stones.querySelector(`[data-rc="${r},${c}"]`); if (g) g.classList.add("win");
+      const [x, y] = this.xy(r, c); this.el("circle", { cx: x, cy: y, r: 21.5, class: "win-ring" }, this.overlay);
+    }
+    this.overlay.querySelectorAll(".last-ring").forEach((e) => e.remove());
+    this.el("line", { x1, y1, x2, y2, class: "win-line", pathLength: 1 }, this.overlay);
   }
   showHints(hints) {
     this.clearHints();
@@ -266,10 +274,109 @@ class BoardView {
       const [x, y] = this.xy(h.row, h.col);
       const g = this.el("g", { class: "hint" }, this.overlay);
       this.el("circle", { cx: x, cy: y, r: 16, class: "hint-ring" }, g);
-      this.el("text", { x, y: y + 6, "text-anchor": "middle", class: "hint-num" }, g).textContent = i + 1;
+      this.el("text", { x, y: y + 5, "text-anchor": "middle", class: "hint-num" }, g).textContent = i + 1;
     });
   }
   clearHints() { this.overlay.querySelectorAll(".hint").forEach((e) => e.remove()); }
+  async think(list, step = 140, dice = false) {
+    // show the moves the AI compared: weaker options first, the chosen move last.
+    // dice = a random agent: it compares nothing, so the squares just flicker
+    this.clearThinking();
+    const layer = this.el("g", { class: "thinking-layer" }, this.overlay);
+    const order = list.map((m, i) => ({ ...m, rank: i + 1 })).reverse();
+    for (const m of order) {
+      if (!layer.isConnected) return;
+      const [x, y] = this.xy(m.row, m.col);
+      const g = this.el("g", { class: "think" + (m.rank === 1 ? " best" : "") + (dice ? " dice" : "") }, layer);
+      this.el("circle", { cx: x, cy: y, r: m.rank === 1 ? 18 : 15 }, g);
+      this.el("text", { x, y: y + 5, "text-anchor": "middle" }, g).textContent = m.rank === 1 ? "\u2713" : dice ? "?" : m.rank;
+      if (dice && m.rank !== 1) { await sleep(step); g.remove(); } else await sleep(m.rank === 1 ? 0 : step);
+    }
+    await sleep(list.length === 1 ? 700 : 420);
+  }
+  clearThinking() { this.overlay.querySelectorAll(".thinking-layer").forEach((e) => e.remove()); }
+  flashCoach(r, c, ms = 3500) {
+    // the coach points at a better square for a moment
+    this.overlay.querySelectorAll(".coach-mark").forEach((e) => e.remove());
+    const [x, y] = this.xy(r, c), g = this.el("g", { class: "coach-mark" }, this.overlay);
+    this.el("circle", { cx: x, cy: y, r: 17 }, g);
+    this.el("text", { x, y: y + 5, "text-anchor": "middle" }, g).textContent = "\u2605";
+    setTimeout(() => g.remove(), ms);
+  }
+  marks(cells, cls, label = "") {
+    const g = this.el("g", { class: cls }, this.overlay);
+    cells.forEach(([r, c]) => {
+      const [x, y] = this.xy(r, c);
+      this.el("circle", { cx: x, cy: y, r: 17 }, g);
+      if (label) this.el("text", { x, y: y + 5, "text-anchor": "middle" }, g).textContent = label;
+    });
+    return g;
+  }
+}
+
+function paintPlayerStones() {
+  $("stoneBlack").innerHTML = `${stoneIcon("black")} Black`;
+  $("stoneWhite").innerHTML = `${stoneIcon("white")} White`;
+}
+function applyTheme(key) {
+  themeKey = THEMES[key] ? key : "slate";
+  store.set("gomoku-theme", themeKey);
+  [Game.view, Watch.view, Lab.heurView, Tutor.view].forEach((v) => v && v.redraw());
+  renderThemes(); paintPlayerStones();
+}
+function stoneIcon(color) { return `<i class="mini ${color}"></i>`; }
+function themePreview(t) {
+  const stone = (x, y, color) => color === "black"
+    ? `<circle cx="${x}" cy="${y}" r="8" fill="#121825" stroke="rgba(255,255,255,.45)"/>`
+    : `<circle cx="${x}" cy="${y}" r="8" fill="#eef4f7" stroke="${t.whiteEdge}"/>`;
+  let grid = "";
+  for (let i = 0; i < 5; i++) {
+    grid += `<line x1="12" y1="${12 + i * 19}" x2="88" y2="${12 + i * 19}" stroke="${t.line}"/><line x1="${12 + i * 19}" y1="12" x2="${12 + i * 19}" y2="88" stroke="${t.line}"/>`;
+  }
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x=".5" y=".5" width="99" height="99" rx="4" fill="${t.fill}" stroke="${t.edge}"/>${grid}
+    ${stone(31, 31, "black")}${stone(50, 50, "white")}${stone(69, 31, "black")}${stone(31, 69, "white")}</svg>`;
+}
+function renderThemes() {
+  $("themeGrid").innerHTML = Object.entries(THEMES).map(([k, t]) => `
+    <button class="theme-tile ${k === themeKey ? "active" : ""}" data-theme="${k}" aria-pressed="${k === themeKey}">
+      ${themePreview(t)}<span>${t.name}</span></button>`).join("");
+  document.querySelectorAll(".theme-name").forEach((e) => { e.textContent = theme().name; });
+}
+function openThemes() {
+  renderThemes();
+  const reopenPause = !$("pauseMenu").hidden;
+  $("pauseMenu").hidden = true; $("themeModal").hidden = false;
+  $("themeClose").onclick = () => { $("themeModal").hidden = true; if (reopenPause) $("pauseMenu").hidden = false; };
+}
+
+/* ------------------------------------------------------------------ AI thinking panel */
+function verdict(v) {
+  if (v >= 4e6) return "wins ";
+  if (v >= 2e6) return "strong attack ";
+  if (v <= -4e6) return "loses ";
+  if (v <= -2e6) return "dangerous ";
+  const a = Math.abs(v), t = a >= 1000 ? `${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : String(a);
+  return (v > 0 ? "+" : v < 0 ? "−" : "") + t;
+}
+function renderThoughts(s, level) {
+  const box = $("thoughts"), list = s.considered || [];
+  if (level === "Easy" || !list.length) {
+    box.innerHTML = `<h4>Moves compared</h4><p class="small">None. This agent is random: it picked 1 of ${s.nodes.toLocaleString()} empty squares without comparing them. The "?" marks on the board are only a visual.</p>`;
+    return;
+  }
+  if (list.length === 1) {
+    box.innerHTML = `<h4>Moves compared</h4><p class="small"><b>${cellName(list[0].row, list[0].col)}</b> was the <b>only</b> sensible move (${escapeHtml(s.reason.toLowerCase())}), so every other square was pruned before searching.</p>`;
+    return;
+  }
+  const vals = list.map((m) => m.score), max = Math.max(...vals), min = Math.min(...vals);
+  const allSame = max === min;
+  box.innerHTML = `<h4>Moves compared, best first</h4>` + list.slice(0, 6).map((m, i) => `
+    <div class="thought ${i === 0 ? "chosen" : ""}">
+      <span class="t-rank">${i === 0 ? "✓" : i + 1}</span><span class="t-cell">${cellName(m.row, m.col)}</span>
+      <span class="t-bar"><i style="width:${allSame ? 50 : 12 + 88 * ((m.score - min) / (max - min))}%"></i></span>
+      <span class="t-val">${level === "Blind" && m.score === 0 ? "safe?" : verdict(m.score)}</span>
+    </div>`).join("") +
+    (level === "Blind" ? `<p class="small">Blind search only knows win or lose. ${allSame ? "Every square scored the same, so it cannot tell them apart." : "Most squares look equal; only wins and losses register."}</p>` : "");
 }
 
 /* ------------------------------------------------------------------ navigation */
@@ -286,13 +393,14 @@ function go(name) {
   if (name === "home") refreshContinue();
   if (name === "levels") renderLevels();
   if (name === "lab") Lab.open();
+  if (name === "scores") Scores.open();
   scrollTo({ top: 0, behavior: "smooth" });
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-go]");
   if (!b) return;
   if (currentScreen === "game" && Game.inProgress() && b.dataset.go !== "game") {
-    toast("Game saved. Press ▶️ Continue on the home screen to come back.");
+    toast("Game saved. Select Continue on the home screen to resume it.");
   }
   go(b.dataset.go);
 });
@@ -307,10 +415,10 @@ const Game = {
   isHumanTurn() { return !this.over && !this.busy && !this.paused && (this.mode === "friend" || this.turn === this.human); },
 
   title() {
-    if (this.mode === "friend") return `👫 Friend game · ${this.size}×${this.size}`;
+    if (this.mode === "friend") return `Two players · ${this.size}×${this.size}`;
     const op = OPPONENTS[this.level];
     if (this.levelIdx !== null) return `Level ${this.levelIdx + 1}: ${LEVELS[this.levelIdx].title} · ${this.size}×${this.size}`;
-    return `${op.face} vs ${op.name} · ${this.size}×${this.size}`;
+    return `vs ${op.name} · ${this.size}×${this.size}`;
   },
 
   setup(cfg) {
@@ -319,7 +427,7 @@ const Game = {
     if (cfg.level) this.level = cfg.level;
     this.human = cfg.mode === "ai" && cfg.first === "ai" ? "white" : "black";
     this.board = emptyBoard(this.size); this.moves = []; this.turn = "black";
-    this.over = false; this.busy = false; this.paused = false; this.hints = cfg.hints ?? 3;
+    this.over = false; this.winner = null; this.busy = false; this.paused = false; this.hints = cfg.hints ?? 3;
     this.started = new Date().toISOString(); this.elapsed = cfg.elapsed || 0;
     if (this.view.n !== this.size) this.view.setSize(this.size); else this.view.clear();
     $("hintCount").textContent = this.hints; $("gameTitle").textContent = this.title();
@@ -336,56 +444,97 @@ const Game = {
 
   setupPlayers() {
     const op = OPPONENTS[this.level];
-    const you = { face: "🙂", name: "You" }, friend1 = { face: "😀", name: "Player 1" }, friend2 = { face: "😎", name: "Player 2" };
+    const you = { name: "You" }, friend1 = { name: "Player 1" }, friend2 = { name: "Player 2" };
     let black, white;
     if (this.mode === "friend") { black = friend1; white = friend2; }
     else if (this.human === "black") { black = you; white = op; } else { black = op; white = you; }
-    $("avBlack").textContent = black.face; $("nameBlack").textContent = black.name;
-    $("avWhite").textContent = white.face; $("nameWhite").textContent = white.name;
+    $("nameBlack").textContent = black.name; $("nameWhite").textContent = white.name;
+    paintPlayerStones();
     $("brainPanel").style.display = this.mode === "friend" ? "none" : "";
-    $("bubbleFace").textContent = op.face;
+    $("levelSec").style.display = this.mode === "friend" ? "none" : "";
+    this.paintLevels();
+  },
+
+  /* ---- difficulty selector ---- */
+  paintLevels() {
+    $("levelSeg").innerHTML = Object.entries(OPPONENTS).map(([k, o]) =>
+      `<button class="tab" role="radio" data-lvl="${k}">${o.short}</button>`).join("");
+    this.syncLevels();
+  },
+  syncLevels() {
+    const locked = this.levelIdx !== null, o = OPPONENTS[this.level];
+    $("levelSeg").querySelectorAll("[data-lvl]").forEach((b) => {
+      const on = b.dataset.lvl === this.level;
+      b.classList.toggle("active", on); b.setAttribute("aria-checked", on); b.disabled = locked || this.busy;
+    });
+    $("levelNote").textContent = locked ? "Fixed for this level." : `${o.tier}. ${o.tech}.`;
+  },
+  async setLevel(lvl) {
+    if (this.mode !== "ai" || this.levelIdx !== null || this.busy || lvl === this.level || !OPPONENTS[lvl]) return;
+    if (this.inProgress() && !(await confirmBox("Change difficulty?", `This starts a new game against ${OPPONENTS[lvl].name}, so your rating stays fair.`))) return;
+    this.level = lvl; $("coachBar").hidden = true;
+    this.restart();
   },
 
   resetBrain() {
     const op = OPPONENTS[this.level], info = Lab.agents && Lab.agents[this.level];
-    this.say(this.mode === "ai" ? `Hi, I'm ${op.name}! ${op.blurb}` : "");
-    $("bsBoards").textContent = "–"; $("bsDepth").textContent = "–"; $("bsTime").textContent = "–";
+    this.say(this.mode === "ai" ? `${op.name}. ${op.blurb}` : "");
+    $("bsBoards").textContent = "-"; $("bsDepth").textContent = "-"; $("bsTime").textContent = "-";
     $("bsTech").textContent = `Algorithm: ${op.tech}`;
+    $("thoughts").innerHTML = "";
     $("agentTags").innerHTML = info
-      ? `<span class="tag">🧩 ${info.agent_type}</span><span class="tag ${info.search.startsWith("Uninformed") ? "tag-un" : "tag-in"}">🔎 ${info.search}</span>`
+      ? `<span class="tag">${info.agent_type}</span><span class="tag ${info.search.startsWith("Uninformed") ? "tag-un" : "tag-in"}">${info.search}</span>`
       : "";
   },
 
   say(text, thinking = false) {
-    $("bubbleText").innerHTML = thinking ? `Hmm, let me think<span class="dots"></span>` : text;
+    $("bubbleText").innerHTML = thinking ? `${text || "Searching"}<span class="dots"></span>` : text;
     $("brainPanel").classList.toggle("thinking", thinking);
   },
 
   updateTurn() {
     $("pcBlack").classList.toggle("turn", !this.over && this.turn === "black");
     $("pcWhite").classList.toggle("turn", !this.over && this.turn === "white");
+    const op = OPPONENTS[this.level];
     let text;
-    if (this.over) text = "Game over";
-    else if (this.paused) text = "Paused ⏸";
-    else if (this.mode === "friend") text = `${this.turn === "black" ? "Player 1 (Black)" : "Player 2 (White)"}'s turn`;
-    else text = this.turn === this.human ? "Your turn! 👆" : `${OPPONENTS[this.level].name} is thinking…`;
+    if (this.over) {
+      const w = this.winner;
+      text = w === "draw" ? "Draw"
+        : this.mode === "friend" ? `${w === "black" ? "Player 1" : "Player 2"} wins`
+        : w === this.human ? "You win" : `${op.name} wins`;
+    }
+    else if (this.paused) text = "Paused";
+    else if (this.mode === "friend") text = `${this.turn === "black" ? "Player 1" : "Player 2"} to move`;
+    else text = this.turn === this.human ? "Your move" : `${op.name} is thinking`;
     $("turnBanner").textContent = text;
+    $("statusStone").className = "status-stone " + (this.over ? (this.winner && this.winner !== "draw" ? this.winner : "none") : this.turn);
+    $("statusBox").classList.toggle("busy", this.busy && !this.paused);
     $("moveCount").textContent = `Move ${this.moves.length}`;
     $("undoBtn").disabled = this.busy || this.paused || this.moves.length === 0;
     $("hintBtn").disabled = !this.isHumanTurn() || this.hints <= 0;
     $("newBtn").disabled = this.paused;
     $("pauseBtn").disabled = this.over;
     this.view.hoverColor = this.turn;
+    this.syncLevels(); this.renderHistory();
+  },
+
+  renderHistory() {
+    const list = $("moveList"), m = this.moves, lastIdx = m.length - 1;
+    if (!m.length) { list.innerHTML = `<li class="move-empty">No moves yet. Black plays first.</li>`; return; }
+    const cell = (i) => m[i] ? `<span class="mv${i === lastIdx ? " last" : ""}">${cellName(m[i].row, m[i].col)}</span>` : "<span></span>";
+    let rows = "";
+    for (let i = 0; i < m.length; i += 2) rows += `<li><span class="n">${i / 2 + 1}</span>${cell(i)}${cell(i + 1)}</li>`;
+    list.innerHTML = rows; list.scrollTop = list.scrollHeight;
   },
 
   /* ---- timer ---- */
   tick(resetOnly = false) {
     clearInterval(this.timerId);
-    $("timer").textContent = "⏱ " + clock(this.elapsed);
+    $("timer").textContent = "" + clock(this.elapsed);
     if (resetOnly && this.elapsed === 0) { /* fall through to start */ }
     this.timerId = setInterval(() => {
       if (this.paused || this.over || currentScreen !== "game" || !this.moves.length) return;
-      this.elapsed++; $("timer").textContent = "⏱ " + clock(this.elapsed);
+      this.elapsed++; $("timer").textContent = "" + clock(this.elapsed);
       if (this.elapsed % 5 === 0) this.save();
     }, 1000);
   },
@@ -395,7 +544,7 @@ const Game = {
     if (this.over || this.paused) return;
     this.paused = true; this.save();
     $("pausedCover").hidden = false;
-    $("pauseInfo").textContent = `${this.title()} · move ${this.moves.length} · ⏱ ${clock(this.elapsed)}`;
+    $("pauseInfo").textContent = `${this.title()} · move ${this.moves.length} · ${clock(this.elapsed)}`;
     $("pauseMenu").hidden = false; $("resumeBtn").focus();
     this.updateTurn();
   },
@@ -412,7 +561,7 @@ const Game = {
   async exit() {
     $("pauseMenu").hidden = true;
     if (this.inProgress()) {
-      const ok = await confirmBox("Exit this game?", "Don't worry, your game is saved. Press ▶️ Continue on the home screen to come back to it.");
+      const ok = await confirmBox("Exit this game?", "Your game is saved. Select Continue on the home screen to resume it.");
       if (!ok) { if (this.paused) $("pauseMenu").hidden = false; return; }
     }
     go(this.levelIdx !== null ? "levels" : "home");
@@ -433,17 +582,19 @@ const Game = {
       this.board[m.row][m.col] = m.player; this.moves.push(m); this.view.addStone(m.row, m.col, m.player, 0, false);
     }
     this.turn = this.moves.length % 2 === 0 ? "black" : "white";
-    this.say("Welcome back! Let's continue. 👋");
+    this.say("Game restored.");
     go("game");
     this.begin();
   },
 
   /* ---- moves ---- */
   click(r, c) {
-    if (this.paused) { toast("The game is paused. Press ▶️ Resume."); return; }
-    if (!this.isHumanTurn()) { if (this.busy) toast("Wait, the computer is thinking! 🤔"); return; }
+    if (this.paused) { toast("The game is paused. Select Resume to continue."); return; }
+    if (!this.isHumanTurn()) { if (this.busy) toast("Wait for the engine to move."); return; }
     if (this.board[r][c]) { Sound.oops(); return; }
+    const before = this.board.map((row) => row.slice()), mover = this.turn;
     this.place(r, c, this.turn);
+    if ($("coachOn").checked) Coach.judge(before, mover, r, c, this.gen);
   },
 
   place(r, c, color, meta = {}) {
@@ -470,8 +621,20 @@ const Game = {
       await sleep(Math.max(0, 450 - (performance.now() - started)));  // let kids see the "thinking"
       while (this.paused && gen === this.gen) await sleep(150);       // hold the move while paused
       if (gen !== this.gen || this.over) return;
-      this.busy = false;
       const s = res.stats;
+      renderThoughts(s, this.level);
+      if ($("showThinking").checked && s.considered && s.considered.length) {
+        const n = Math.min(6, s.considered.length);
+        const msg = this.level === "Easy" ? "Choosing at random"
+          : n === 1 ? `Searched ${s.nodes.toLocaleString()} boards. Only one sensible move`
+          : `Searched ${s.nodes.toLocaleString()} boards. Comparing the best ${n} moves`;
+        this.say(msg, true);
+        await this.view.think(s.considered.slice(0, 6), n === 1 ? 0 : Math.max(90, 520 / n), this.level === "Easy");
+        while (this.paused && gen === this.gen) await sleep(150);
+        this.view.clearThinking();
+        if (gen !== this.gen || this.over) return;
+      }
+      this.busy = false;
       this.say(kid(s.reason));
       $("bsBoards").textContent = s.nodes.toLocaleString();
       $("bsDepth").textContent = s.depth || "1";
@@ -485,7 +648,7 @@ const Game = {
     } catch (err) {
       if (gen !== this.gen) return;
       this.busy = false; this.updateTurn();
-      this.say("Oops, I couldn't reach my brain (the Python server). Is web_app.py running?");
+      this.say("Could not reach the Python server. Check that web_app.py is running.");
       console.error(err);
     }
   },
@@ -497,8 +660,8 @@ const Game = {
       this.hints--; $("hintCount").textContent = this.hints; this.updateTurn(); this.save();
       this.view.showHints(hints);
       Sound.hint();
-      this.say(`💡 Try one of these:<br>${hints.map((h, i) => `<b>${i + 1}.</b> ${cellName(h.row, h.col)}: ${h.reason}`).join("<br>")}`);
-    } catch (err) { toast("Couldn't get a hint 😕"); console.error(err); }
+      this.say(`Suggested moves:<br>${hints.map((h, i) => `<b>${i + 1}.</b> ${cellName(h.row, h.col)}: ${h.reason}`).join("<br>")}`);
+    } catch (err) { toast("Could not get a hint."); console.error(err); }
   },
 
   undo() {
@@ -509,8 +672,8 @@ const Game = {
     for (let i = 0; i < n; i++) {
       const m = this.moves.pop(); this.board[m.row][m.col] = null; this.view.removeStone(m.row, m.col);
     }
-    this.over = false; this.busy = false;
-    this.view.overlay.innerHTML = "";
+    this.over = false; this.winner = null; this.busy = false;
+    this.view.overlay.innerHTML = ""; this.view.stones.classList.remove("has-win");
     const last = this.moves[this.moves.length - 1];
     if (last) this.view.markLast(last.row, last.col);
     this.turn = this.moves.length % 2 === 0 ? "black" : "white";
@@ -523,21 +686,23 @@ const Game = {
     this.over = true; this.busy = false; this.updateTurn(); this.clearSave();
     const humanWon = this.mode === "friend" ? winner !== "draw" : winner === this.human;
     const op = OPPONENTS[this.level];
-    let face, title, sub;
-    if (winner === "draw") { face = "🤝"; title = "It's a draw!"; sub = "The whole board is full. Great defending!"; }
-    else if (this.mode === "friend") { face = "🏆"; title = `${winner === "black" ? "Player 1" : "Player 2"} wins!`; sub = "Five in a row!"; }
-    else if (humanWon) { face = "🎉"; title = this.levelIdx !== null ? `Level ${this.levelIdx + 1} complete!` : "You won!"; sub = `You beat ${op.name}! ${op.face}`; }
-    else { face = op.face; title = `${op.name} wins this time`; sub = "Don't give up. Check the tips below and try again!"; }
-    if (humanWon) { Sound.win(); confetti(); } else if (winner !== "draw") Sound.lose();
-    if (this.mode === "ai") this.say(humanWon ? "Wow, you got me! 😲 Play again?" : winner === "draw" ? "A draw! Good game." : "Good game! 😊");
+    this.winner = winner; this.updateTurn();
+    let face = "", title, sub;
+    if (winner === "draw") { title = "Draw"; sub = "The board is full."; }
+    else if (this.mode === "friend") { title = `${winner === "black" ? "Player 1" : "Player 2"} wins`; sub = "Five in a row."; }
+    else if (humanWon) { title = this.levelIdx !== null ? `Level ${this.levelIdx + 1} complete` : "You win"; sub = `You beat ${op.name}.`; }
+    else { title = `${op.name} wins`; sub = "Review the notes below and try again."; }
+    if (humanWon) Sound.win(); else if (winner !== "draw") Sound.lose();
+    if (this.mode === "ai") this.say(humanWon ? "You won." : winner === "draw" ? "Draw." : "Game over.");
 
     $("modalFace").textContent = face; $("modalTitle").textContent = title; $("modalSub").textContent = sub;
-    $("modalStars").innerHTML = ""; $("modalReport").innerHTML = "<p>Looking at your game…</p>";
+    $("modalStars").innerHTML = ""; $("modalReport").innerHTML = "<p>The AI is grading your game…</p>";
+    $("modalRating").hidden = true; $("modalSmart").hidden = true;
     const isLevel = this.levelIdx !== null, nextIdx = isLevel ? this.levelIdx + 1 : null;
     $("nextLevelBtn").hidden = !(isLevel && humanWon && nextIdx < LEVELS.length);
     $("againBtn").textContent = isLevel && !humanWon ? "Try again" : "Play again";
     $("modalLearned").hidden = !isLevel;
-    if (isLevel) $("modalLearned").innerHTML = `🎓 <b>AI idea in this level:</b> ${LEVELS[this.levelIdx].learn}`;
+    if (isLevel) $("modalLearned").innerHTML = `<b>AI idea in this level:</b> ${LEVELS[this.levelIdx].learn}`;
     await sleep(900);
     if (currentScreen === "game") $("modal").hidden = false;
 
@@ -548,9 +713,23 @@ const Game = {
       .catch((e) => console.error(e));
 
     const perspective = this.mode === "friend" ? (winner === "white" ? "white" : "black") : this.human;
+    const who = this.mode === "friend" ? (perspective === "black" ? "Player 1" : "Player 2") : "you";
+    const me = Player.get();
     try {
-      const a = await api("/api/analyze", { moves: this.moves, perspective, size: this.size });
-      this.renderReport(a, this.mode === "friend" ? (perspective === "black" ? "Player 1" : "Player 2") : "you");
+      let a, rating = null;
+      if (this.mode === "ai" && me) {
+        const r = await api("/api/result", {
+          player: me.name, avatar: me.avatar, level: this.level, human_color: this.human, winner,
+          moves: this.moves, size: this.size, duration_s: this.elapsed, mode: isLevel ? `level${this.levelIdx + 1}` : "quick",
+        });
+        a = r.analysis; rating = r.rating;
+        renderSmartNext(r.smart_match);
+        Player.cacheRating(rating);
+      } else {
+        a = await api("/api/analyze", { moves: this.moves, perspective, size: this.size });
+      }
+      this.renderReport(a, who);
+      renderGameRating(a, rating, who);
       if (isLevel && humanWon) Progress.complete(this.levelIdx, a.stars);
     } catch (err) {
       $("modalReport").innerHTML = "<p>Game analysis is not available right now.</p>"; console.error(err);
@@ -559,26 +738,229 @@ const Game = {
   },
 
   renderReport(a, who) {
-    $("modalStars").innerHTML = [1, 2, 3].map((i) => `<span class="${i <= a.stars ? "" : "off"}">⭐</span>`).join("");
-    const label = { missed_win: "🎯 Missed win", missed_block: "🧱 Missed block", missed_defence: "👀 Missed open three",
-                    weak_move: "🤔 Could be better", strong_move: "💪 Great move", danger: "⚠️ Watch out" };
+    $("modalStars").innerHTML = [1, 2, 3].map((i) => `<span class="${i <= a.stars ? "" : "off"}">★</span>`).join("");
+    const label = { missed_win: "Missed win", missed_block: "Missed block", missed_defence: "Missed open three",
+                    weak_move: "Could be better", strong_move: "Great move", danger: "Watch out" };
     const pick = (types) => a.events.filter((e) => types.includes(e.type)).slice(0, 4)
       .map((e) => `<li><b>Move ${e.move_no} (${e.cell})</b>: ${label[e.type]}. ${e.text}</li>`).join("");
     const good = pick(["strong_move"]), bad = pick(["missed_win", "missed_block", "missed_defence", "weak_move"]);
     $("modalReport").innerHTML = `
-      <h4>📊 How ${who} played</h4>
+      <h4>How ${who} played</h4>
       <p>${a.your_moves} moves · ${a.strong_moves} great moves · ${a.total_mistakes} mistakes · ${a.dangers} danger moments</p>
-      ${good ? `<h4>💪 Great moves</h4><ul>${good}</ul>` : ""}
-      ${bad ? `<h4>📝 Things to practise</h4><ul>${bad}</ul>` : ""}
-      <div class="tip">💡 <b>Tip:</b> ${a.tip}</div>`;
+      ${good ? `<h4>Great moves</h4><ul>${good}</ul>` : ""}
+      ${bad ? `<h4>Things to practise</h4><ul>${bad}</ul>` : ""}
+      <div class="tip"><b>Tip:</b> ${a.tip}</div>`;
   },
 };
 
-function startGame(cfg) {
+/* ------------------------------------------------------------------ live coach */
+const Coach = {
+  async judge(board, color, r, c, gen) {
+    try {
+      const d = await api("/api/coach", { board, color, move: [r, c] });
+      if (gen !== Game.gen || currentScreen !== "game") return;
+      const icon = "";
+      const title = { great: "Great move", good: "Good move", warning: "Careful", mistake: "Mistake" }[d.verdict];
+      const who = Game.mode === "friend" ? `${color === "black" ? "Player 1" : "Player 2"} played ${cellName(r, c)}. ` : "";
+      const bar = $("coachBar");
+      bar.className = `coach-bar v-${d.verdict}`;
+      bar.innerHTML = `<span class="cb-icon">${icon}</span><div><b>${title}.</b> ${who}${escapeHtml(d.text)}${d.text.endsWith(".") || d.text.endsWith("!") ? "" : "."}
+        <small>Move quality ${d.quality}%${d.better_cell ? ` · ★ marks ${d.better_cell} on the board` : ""}</small></div>`;
+      bar.hidden = false;
+      if (d.better) Game.view.flashCoach(d.better[0], d.better[1]);
+    } catch (err) { console.error(err); }
+  },
+};
+
+async function smartMatch(size, first) {
+  if (!Player.get() && !Player.guest) await askPlayer();
+  const me = Player.get();
+  let d;
+  try { d = await api(`/api/smart-match${me ? `?player=${encodeURIComponent(me.name)}` : ""}`); }
+  catch (err) { toast("Couldn't reach the Python server."); return; }
+  const o = OPPONENTS[d.level];
+  toast(`Smart Match picked ${o.face} ${o.name}. ${d.why}`);
+  startGame({ mode: "ai", size: size || pickSize, level: d.level, first: first || firstMove });
+}
+
+async function startGame(cfg) {
+  if (cfg.mode === "ai" && !Player.get() && !Player.guest) await askPlayer();
   Game.setup(cfg);
+  $("coachBar").hidden = true;
   go("game");
   Game.begin();
 }
+
+/* ------------------------------------------------------------------ player, rating, scoreboard */
+const LOCK_SVG = '<svg class="lock-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const AVATARS = ["dot", "ring", "sq", "dia", "tri", "plus", "bars", "x"];
+const AV_SHAPES = {
+  dot: '<circle cx="12" cy="12" r="7" fill="currentColor"/>',
+  ring: '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.4"/>',
+  sq: '<rect x="5" y="5" width="14" height="14" fill="currentColor"/>',
+  dia: '<path d="M12 3l9 9-9 9-9-9z" fill="currentColor"/>',
+  tri: '<path d="M12 4l9 15H3z" fill="currentColor"/>',
+  plus: '<path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.6" fill="none"/>',
+  bars: '<path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="2.4" fill="none"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" fill="none"/>',
+};
+// a geometric mark for known keys; anything else (old emoji avatars) falls back to the initial
+function avatarHtml(a, name) {
+  return AV_SHAPES[a] ? `<svg class="av-mark" viewBox="0 0 24 24" aria-hidden="true">${AV_SHAPES[a]}</svg>`
+    : `<span class="av-init">${escapeHtml(String(name || "?").trim().charAt(0).toUpperCase() || "?")}</span>`;
+}
+const Player = {
+  guest: false,
+  get() { return store.get("gomoku-player", null); },
+  set(p) { store.set("gomoku-player", p); renderPlayerChip(); },
+  cacheRating(r) { const p = this.get(); if (p && r) { p.rating = r.rating_after; p.title = r.title; p.icon = r.icon; this.set(p); } },
+};
+function askPlayer() {
+  return new Promise((resolve) => {
+    const cur = Player.get();
+    let avatar = (cur && cur.avatar) || AVATARS[0];
+    $("playerName").value = cur ? cur.name : "";
+    const paint = () => { $("avatarPick").innerHTML = AVATARS.map((a) => `<button class="av ${a === avatar ? "active" : ""}" data-av="${a}" role="radio" aria-label="${a}" aria-checked="${a === avatar}">${avatarHtml(a)}</button>`).join(""); };
+    paint();
+    $("avatarPick").onclick = (e) => { const b = e.target.closest("[data-av]"); if (b) { avatar = b.dataset.av; paint(); } };
+    $("playerModal").hidden = false; $("playerName").focus();
+    const done = async (save) => {
+      const name = $("playerName").value.trim();
+      if (save && !name) { toast("Enter a name to continue."); $("playerName").focus(); return; }
+      $("playerModal").hidden = true;
+      if (save) {
+        Player.guest = false;
+        try {
+          const prof = await api("/api/player", { name, avatar });
+          Player.set({ name: prof.name, avatar: prof.avatar, rating: prof.rating, title: prof.title, icon: prof.icon });
+          toast(`Signed in as ${prof.name}. Rating ${prof.rating}.`);
+        } catch (err) { Player.set({ name, avatar }); }
+      } else Player.guest = true;
+      resolve(Player.get());
+    };
+    $("playerSave").onclick = () => done(true);
+    $("playerSkip").onclick = () => done(false);
+    $("playerName").onkeydown = (e) => { if (e.key === "Enter") done(true); };
+  });
+}
+function renderPlayerChip() {
+  const p = Player.get();
+  $("playerChip").innerHTML = p
+    ? `Playing as <b>${avatarHtml(p.avatar, p.name)} ${escapeHtml(p.name)}</b>${p.rating ? ` · ${p.rating} ${p.title || ""}` : ""} · <button class="link" id="chipChange">change</button>`
+    : `<button class="link" id="chipChange">Set your name to get a rating</button>`;
+  $("chipChange").onclick = () => askPlayer();
+}
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]); }
+
+function renderGameRating(a, r, who) {
+  const box = $("modalRating");
+  const gradeClass = a.grade.replace("+", "plus");
+  box.innerHTML = `
+    <div class="grade-big g-${gradeClass}" aria-label="Grade ${a.grade}">${a.grade}</div>
+    <div class="rating-body">
+      <b>The AI's rating of how ${who} played</b>
+      <div class="acc-bar" aria-label="Accuracy ${a.accuracy}%"><i style="width:${a.accuracy}%"></i></div>
+      <span>Accuracy <b>${a.accuracy}%</b> · ${a.grade_words}</span>
+      ${r ? `<div class="rating-line">Rating ${r.rating_before} → <b>${r.rating_after}</b>
+              <span class="${r.rating_change >= 0 ? "up" : "down"}">${r.rating_change >= 0 ? "+" : ""}${r.rating_change}</span>
+              · ${r.title}</div>`
+          : guestRatingHint()}
+    </div>`;
+  box.hidden = false;
+}
+function guestRatingHint() {
+  return Game.mode === "ai" ? `<div class="rating-line small">Set your name on the home screen to save a rating and appear on the scoreboard.</div>` : "";
+}
+
+function renderSmartNext(sm) {
+  if (!sm || !sm.fuzzy) return;
+  const o = OPPONENTS[sm.level], same = sm.level === Game.level;
+  $("modalSmart").innerHTML = `
+    <div><b>Fuzzy-logic coach</b> (your last ${sm.recent.games} game${sm.recent.games > 1 ? "s" : ""}):
+      skill <b>${Math.round(sm.fuzzy.skill)}/100 (${sm.fuzzy.skill_label})</b>, difficulty: <b>${sm.fuzzy.adjust_label}</b>.
+      <br>${same ? "Stay with" : "Next, try"} ${o.face} <b>${o.name}</b>.</div>
+    <button class="big-btn green" id="smartPlay">Play ${o.name.split(" ")[0]}</button>`;
+  $("modalSmart").hidden = false;
+  $("smartPlay").onclick = () => { $("modal").hidden = true; startGame({ mode: "ai", size: Game.size, level: sm.level, first: Game.human === "white" ? "ai" : "human" }); };
+}
+
+function ratingChart(values) {
+  if (values.length < 2) return `<p class="small">Play a game against a robot to start your rating chart.</p>`;
+  const W = 520, H = 180, P = 30;
+  let lo = Math.min(...values), hi = Math.max(...values);
+  if (hi - lo < 120) { const mid = (hi + lo) / 2; lo = mid - 60; hi = mid + 60; }  // keep axis labels apart
+  const min = lo - 20, max = hi + 20;
+  const x = (i) => P + (i * (W - 2 * P)) / (values.length - 1), y = (v) => H - P - ((v - min) * (H - 2 * P)) / (max - min);
+  const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const grid = [min + 20, Math.round((min + max) / 2), max - 20].map((v) =>
+    `<line x1="${P}" x2="${W - P}" y1="${y(v)}" y2="${y(v)}" class="chart-grid"/><text x="${P - 6}" y="${y(v) + 4}" text-anchor="end" class="chart-label">${Math.round(v)}</text>`).join("");
+  const dots = values.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === values.length - 1 ? 6 : 4}" class="chart-dot"><title>${i === 0 ? "Start" : "Game " + i}: ${v}</title></circle>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" class="rating-chart" role="img" aria-label="Rating over time, now ${values[values.length - 1]}">
+    ${grid}<polyline points="${pts}" class="chart-line"/>${dots}
+    <text x="${x(values.length - 1)}" y="${y(values[values.length - 1]) - 12}" text-anchor="end" class="chart-value">${values[values.length - 1]}</text></svg>`;
+}
+
+const Scores = {
+  async open() {
+    const me = Player.get();
+    let d;
+    try { d = await api(`/api/scoreboard${me ? `?player=${encodeURIComponent(me.name)}` : ""}`); }
+    catch (err) { $("scoresMain").innerHTML = `<div class="panel"><p>Couldn't reach the Python server. Is web_app.py running?</p></div>`; return; }
+    const p = d.player;
+    if (!p) {
+      $("scoresMain").innerHTML = `<div class="panel center-text"><div class="big-face"></div><h3>No rating yet</h3>
+        <p>Set your name, then play any robot. The AI will grade every game and give you a rating.</p>
+        <button class="big-btn primary" id="scoreSetName">Set my name</button></div>`;
+      $("scoreSetName").onclick = async () => { await askPlayer(); Scores.open(); };
+    } else {
+      Player.set({ name: p.name, avatar: p.avatar, rating: p.rating, title: p.title, icon: p.icon });
+      const res = { win: "Won", loss: "Lost", draw: "Draw" };
+      $("scoresMain").innerHTML = `
+        <div class="panel profile">
+          <div class="profile-face">${avatarHtml(p.avatar, p.name)}</div>
+          <div class="profile-info">
+            <h3>${escapeHtml(p.name)} <button class="link" id="switchPlayer">switch player</button>
+              <button class="link danger-link" id="deleteMe">delete my data</button></h3>
+            <div class="profile-rating"><b>${p.rating}</b> <span>${p.title}${p.rank ? ` · rank #${p.rank}` : ""}</span></div>
+            <div class="profile-stats">
+              <span><b>${p.games}</b> games</span><span><b>${p.wins}</b> wins</span><span><b>${p.draws}</b> draws</span>
+              <span><b>${p.losses}</b> losses</span><span><b>${p.avg_accuracy ?? "–"}%</b> avg accuracy</span>
+              <span><b>${p.best_accuracy ?? "–"}%</b> best</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel"><h3>What the AI noticed about you</h3>
+          <div class="insights">${(p.insights || []).map((i) => `<div class="insight"><span>${i.icon}</span><div><b>${escapeHtml(i.title)}</b><p>${escapeHtml(i.text)}</p></div></div>`).join("")}</div>
+        </div>
+        <div class="panel"><h3>My rating over time</h3>${ratingChart(p.rating_history)}</div>
+        <div class="panel"><h3>My record against each robot</h3>
+          ${p.vs_robots.length ? `<table class="lab-table"><tr><th>Robot</th><th>Robot rating</th><th>Won</th><th>Draw</th><th>Lost</th></tr>
+            ${p.vs_robots.map((v) => `<tr><td>${OPPONENTS[v.opponent].face} ${v.name}</td><td>${v.robot_rating}</td><td>${v.win}</td><td>${v.draw}</td><td>${v.loss}</td></tr>`).join("")}</table>`
+            : `<p class="small">No games yet.</p>`}
+        </div>
+        <div class="panel"><h3>My games (newest first)</h3>
+          ${p.history.length ? `<div class="table-scroll"><table class="lab-table history"><tr><th>Date</th><th>Robot</th><th>Board</th><th>Result</th><th>Accuracy</th><th>Grade</th><th>Rating</th></tr>
+            ${p.history.map((h) => `<tr><td>${h.played_at.slice(0, 16).replace("T", " ")}</td><td>${OPPONENTS[h.opponent].face} ${h.opponent_name}</td>
+              <td>${h.board_size}×${h.board_size}</td><td>${res[h.result]}</td><td>${h.accuracy}%</td><td><b>${h.grade}</b></td>
+              <td>${h.rating_after} <span class="${h.rating_change >= 0 ? "up" : "down"}">${h.rating_change >= 0 ? "+" : ""}${h.rating_change}</span></td></tr>`).join("")}
+          </table></div>` : `<p class="small">No games yet.</p>`}
+        </div>`;
+      $("switchPlayer").onclick = async () => { await askPlayer(); Scores.open(); };
+      $("deleteMe").onclick = async () => {
+        if (!(await confirmBox("Delete my data?", `This permanently removes ${p.name}'s rating and all ${p.games} recorded games from this computer.`))) return;
+        await fetch(`/api/player?name=${encodeURIComponent(p.name)}`, { method: "DELETE" });
+        store.del("gomoku-player"); renderPlayerChip(); toast("Your data was deleted."); Scores.open();
+      };
+    }
+    $("leaderboard").innerHTML = d.leaderboard.length ? d.leaderboard.map((r) => `
+      <div class="lb-row ${me && r.name.toLowerCase() === me.name.toLowerCase() ? "me" : ""}">
+        <span class="lb-rank">${r.rank <= 3 ? ["", "", ""][r.rank - 1] : r.rank}</span>
+        <span class="lb-name">${avatarHtml(r.avatar, r.name)} ${escapeHtml(r.name)}<small>${r.title} · ${r.games} games</small></span>
+        <b class="lb-rating">${r.rating}</b>
+      </div>`).join("") : `<p class="small">No ratings yet. Finish a game against an engine to appear here.</p>`;
+    $("robotRatings").innerHTML = d.robots.map((r) => `<div><span>${OPPONENTS[r.level].face} ${r.name}</span><b>${r.rating}</b></div>`).join("");
+  },
+};
 
 /* ------------------------------------------------------------------ continue */
 function refreshContinue() {
@@ -600,7 +982,7 @@ const Progress = {
     this.data.stars[idx] = Math.max(prev, stars);
     this.data.unlocked = Math.max(this.data.unlocked, Math.min(LEVELS.length, idx + 2));
     store.set("gomoku-progress", this.data);
-    if (!prev) toast(idx + 1 < LEVELS.length ? `🔓 Level ${idx + 2} unlocked!` : "🏆 You finished every level!");
+    if (!prev) toast(idx + 1 < LEVELS.length ? `Level ${idx + 2} unlocked.` : "All levels complete.");
   },
   reset() { this.data = { unlocked: 1, stars: {} }; store.set("gomoku-progress", this.data); },
 };
@@ -608,15 +990,15 @@ function renderLevels() {
   const d = Progress.data, done = Object.keys(d.stars).length;
   const starTotal = Object.values(d.stars).reduce((a, b) => a + b, 0);
   $("progressFill").style.width = `${(done / LEVELS.length) * 100}%`;
-  $("progressText").textContent = `${done} / ${LEVELS.length} levels · ${starTotal} / ${LEVELS.length * 3} ⭐`;
+  $("progressText").textContent = `${done} / ${LEVELS.length} levels · ${starTotal} / ${LEVELS.length * 3} ★`;
   $("levelGrid").innerHTML = LEVELS.map((L, i) => {
     const op = OPPONENTS[L.op], locked = i + 1 > d.unlocked, stars = d.stars[i] || 0;
     return `<button class="level ${locked ? "locked" : ""} ${stars ? "done" : ""}" data-level-idx="${i}" ${locked ? "aria-disabled=\"true\"" : ""}>
-      <span class="lv-num">${locked ? "🔒" : i + 1}</span>
+      <span class="lv-num">${locked ? LOCK_SVG : i + 1}</span>
       <span class="lv-face">${op.face}</span>
       <b>${L.title}</b>
-      <small>${L.size}×${L.size} · vs ${op.name}${L.first === "ai" ? " · they start" : ""}</small>
-      <span class="lv-stars">${[1, 2, 3].map((s) => `<i class="${s <= stars ? "" : "off"}">⭐</i>`).join("")}</span>
+      <small>${L.size}×${L.size} · vs ${op.name}${L.first === "ai" ? " · engine first" : ""}</small>
+      <span class="lv-stars">${[1, 2, 3].map((s) => `<i class="${s <= stars ? "" : "off"}">★</i>`).join("")}</span>
     </button>`;
   }).join("");
 }
@@ -624,7 +1006,7 @@ $("levelGrid").addEventListener("click", (e) => {
   const b = e.target.closest("[data-level-idx]");
   if (!b) return;
   const i = +b.dataset.levelIdx;
-  if (i + 1 > Progress.data.unlocked) { Sound.oops(); toast(`Beat level ${i} first to unlock this one! 🔒`); return; }
+  if (i + 1 > Progress.data.unlocked) { Sound.oops(); toast(`Beat level ${i} first to unlock this one.`); return; }
   playLevel(i);
 });
 function playLevel(i) {
@@ -642,14 +1024,18 @@ function buildPicker() {
   const wrap = $("opponentCards");
   wrap.innerHTML = Object.entries(OPPONENTS).map(([lvl, o]) => `
     <div class="op-card">
-      <span class="op-face">${o.face}</span>
-      <h3>${o.name}</h3>
-      <span class="op-level" style="background:${o.color}">${lvl === "Blind" ? "Blind search" : lvl === "Minimax" ? "Minimax" : lvl}</span>
-      <div class="op-meter" aria-label="Difficulty ${o.stars} of 4">${[1, 2, 3, 4].map((i) => `<i class="${i <= o.stars ? "on" : ""}"></i>`).join("")}</div>
+      <div class="op-head"><h3>${o.name}</h3><span class="op-tier">${o.tier}</span></div>
+      <div class="op-meter" role="img" aria-label="Strength ${o.stars} of 4">${[1, 2, 3, 4].map((i) => `<i class="${i <= o.stars ? "on" : ""}"></i>`).join("")}</div>
       <p>${o.blurb}</p>
-      <div class="op-tech">🧠 ${o.tech}</div>
-      <button class="big-btn primary" data-level="${lvl}">Play ${o.name.split(" ")[0]}</button>
+      <div class="op-tech">${o.tech}</div>
+      <button class="big-btn" data-level="${lvl}">Play ${o.name}</button>
     </div>`).join("");
+  $("smartBtn").onclick = () => smartMatch(pickSize, firstMove);
+  document.querySelectorAll("[data-practice]").forEach((b) => b.addEventListener("click", () => {
+    $("coachOn").checked = true; store.set("gomoku-coach", true);
+    if (b.dataset.practice === "smart") smartMatch(9, "human");
+    else startGame({ mode: "ai", size: 9, level: b.dataset.practice, first: "human" });
+  }));
   wrap.addEventListener("click", (e) => {
     const b = e.target.closest("[data-level]");
     if (b) startGame({ mode: "ai", size: pickSize, level: b.dataset.level, first: firstMove });
@@ -685,6 +1071,8 @@ const Watch = {
   },
   size() { return +$("watchSize").value; },
   robot(id) { return OPPONENTS[$(id === "A" ? "watchA" : "watchB").value]; },
+  // when both sides use the same agent, tell them apart: "Rule-based A" and "Rule-based B"
+  label(id) { const o = this.robot(id); return this.level("A") === this.level("B") ? `${o.name} ${id}` : o.name; },
   level(id) { return $(id === "A" ? "watchA" : "watchB").value; },
   idOf(color) { return this.colors.A === color ? "A" : "B"; },
 
@@ -693,7 +1081,7 @@ const Watch = {
     const s = this.score, a = this.robot("A"), b = this.robot("B");
     $("scA").textContent = s.A; $("scB").textContent = s.B; $("scDraw").textContent = s.draw;
     $("scAFace").textContent = a.face; $("scBFace").textContent = b.face;
-    $("scAName").textContent = `${a.name} wins`; $("scBName").textContent = `${b.name} wins`;
+    $("scAName").textContent = `${this.label("A")} wins`; $("scBName").textContent = `${this.label("B")} wins`;
     $("scBlack").textContent = s.black; $("scWhite").textContent = s.white;
     const decided = s.black + s.white;
     $("colourNote").textContent = decided
@@ -706,7 +1094,7 @@ const Watch = {
       const body = s && s.moves
         ? `${s.moves} moves · ${Math.round(s.nodes / s.moves).toLocaleString()} boards/move · ${Math.round(s.ms / s.moves).toLocaleString()} ms/move<br><i>${kid(s.last)}</i>`
         : o.blurb;
-      return `<div class="rs"><b>${color === "black" ? "⚫" : "⚪"} ${o.face} ${o.name}</b> <small>(${color} this game)</small><br>${body}</div>`;
+      return `<div class="rs"><b>${this.label(id)}</b> <small>(${color} this game)</small><br>${body}</div>`;
     }).join("");
   },
   reset() {
@@ -714,7 +1102,7 @@ const Watch = {
     this.gamesLeft = 0; this.gameNo = 0; this.colors = { A: "black", B: "white" }; this.opening = [];
     this.view.setSize(this.size()); $("watchStatus").textContent = "Pick two robots and press Start"; this.renderStats();
   },
-  pause() { if (this.running) { this.running = false; $("watchStatus").textContent = "Paused ⏸ (press Start to resume)"; } },
+  pause() { if (this.running) { this.running = false; $("watchStatus").textContent = "Paused (press Start to resume)"; } },
   async start() {
     if (this.running) return;
     if (!this.gamesLeft) { this.gamesLeft = parseInt($("watchGames").value, 10); this.gameNo = 0; await this.newGame(); }
@@ -728,10 +1116,17 @@ const Watch = {
     this.colors = swap && secondOfPair ? { A: "white", B: "black" } : { A: "black", B: "white" };
     const stones = +$("watchOpening").value;
     // a new random opening for every pair of games; the second game of a pair reuses it with colours swapped
-    if (!swap || !secondOfPair || this.opening.length !== stones) {
+    // identical agents on both sides gain nothing from colour-swapped pairs, so every game gets its own opening
+    const sameAgent = this.level("A") === this.level("B");
+    const fresh = !swap || sameAgent || !secondOfPair || this.opening.length !== stones;
+    if (fresh) this.pairSeed = Math.floor(Math.random() * 2 ** 30);
+    // one seed per game: seed >> 1 picks the opening (shared by a swapped pair), the seed itself drives tie-breaks.
+    // agents.play_battle(level_a, level_b, seed, a_black) replays the game exactly.
+    this.seed = this.pairSeed * 2 + (fresh ? 0 : 1);
+    if (fresh) {
       this.opening = [];
       if (stones) {
-        try { this.opening = (await api(`/api/opening?stones=${stones}&size=${this.size()}`)).moves; }
+        try { this.opening = (await api(`/api/opening?stones=${stones}&size=${this.size()}&seed=${this.pairSeed}`)).moves; }
         catch (err) { console.error(err); }
       }
     }
@@ -743,9 +1138,9 @@ const Watch = {
   async loop(gen) {
     while (this.running && gen === this.gen) {
       const color = this.moves.length % 2 === 0 ? "black" : "white", id = this.idOf(color), robot = this.robot(id);
-      $("watchStatus").textContent = `Game ${this.gameNo}: ${robot.face} ${robot.name} (${color}) is thinking… · ${this.gamesLeft} game(s) left`;
+      $("watchStatus").textContent = `Game ${this.gameNo}: ${this.label(id)} (${color}) is thinking… · seed ${this.seed} · ${this.gamesLeft} game(s) left`;
       let res;
-      try { res = await api("/api/ai-move", { board: this.board, color, level: this.level(id) }); }
+      try { res = await api("/api/ai-move", { board: this.board, color, level: this.level(id), seed: this.seed }); }
       catch (err) { $("watchStatus").textContent = "Can't reach the Python server. Is web_app.py running?"; this.running = false; return; }
       while (!this.running && gen === this.gen) await sleep(150);  // paused mid-think: hold the move
       if (gen !== this.gen) return;
@@ -766,8 +1161,8 @@ const Watch = {
     else { this.score[winner]++; this.score[this.idOf(winner)]++; }
     store.set("gomoku-score2", this.score); this.renderScore();
     const who = winner === "draw" ? null : this.robot(this.idOf(winner));
-    $("watchStatus").textContent = winner === "draw" ? `Game ${this.gameNo}: draw!` : `🏆 Game ${this.gameNo}: ${who.face} ${who.name} (${winner}) wins in ${this.moves.length} moves!`;
-    const black = this.robot(this.idOf("black")).name, white = this.robot(this.idOf("white")).name;
+    $("watchStatus").textContent = winner === "draw" ? `Game ${this.gameNo}: draw.` : `Game ${this.gameNo}: ${this.label(this.idOf(winner))} (${winner}) wins in ${this.moves.length} moves. Seed ${this.seed}.`;
+    const black = this.label(this.idOf("black")), white = this.label(this.idOf("white"));
     api("/api/save", { mode: "watch", winner, moves: this.moves, size: this.size(), black, white }).catch(() => {});
     this.gamesLeft--;
     if (this.gamesLeft > 0 && this.running && gen === this.gen) {
@@ -780,6 +1175,8 @@ const Watch = {
 };
 
 /* ------------------------------------------------------------------ AI Lab */
+const FUZZY_ORDER = { accuracy: ["low", "medium", "high"], mistakes: ["few", "some", "many"], results: ["losing", "even", "winning"] };
+
 const Lab = {
   agents: null, heurView: null, heurBoard: emptyBoard(9), heurColor: "black",
 
@@ -805,7 +1202,7 @@ const Lab = {
   },
   async compare() {
     const n = +$("cmpSize").value;
-    $("cmpRun").disabled = true; $("cmpOut").innerHTML = "<p>Running the searches… 🔎</p>";
+    $("cmpRun").disabled = true; $("cmpOut").innerHTML = "<p>Running the searches… </p>";
     try {
       const d = await api("/api/compare", { board: this.sampleBoard(n), color: "white" });
       const max = Math.max(...d.results.map((r) => r.nodes));
@@ -852,20 +1249,100 @@ const Lab = {
       const capped = Math.max(-1, Math.min(1, Math.sign(d.score) * Math.log10(Math.abs(d.score) + 1) / 7));
       $("heurMeter").style.width = `${50 + capped * 50}%`;
       $("heurVerdict").innerHTML = d.score === 0 ? "Score 0: even position" :
-        `Score <b>${d.score.toLocaleString()}</b>: ${d.score > 0 ? "⚫ Black" : "⚪ White"} is ahead${Math.abs(d.score) >= d.win_score ? " (five in a row!)" : ""}`;
+        `Score <b>${d.score.toLocaleString()}</b>: ${d.score > 0 ? "Black" : "White"} is ahead${Math.abs(d.score) >= d.win_score ? " (five in a row!)" : ""}`;
       const rows = d.patterns.black.map((p, i) => {
         const w = d.patterns.white[i];
         return `<tr><td>${p.name}</td><td>${p.weight.toLocaleString()}</td><td>${p.count}</td><td>${w.count}</td></tr>`;
       }).join("");
-      $("heurTable").innerHTML = `<table class="lab-table"><tr><th>Pattern</th><th>Weight</th><th>⚫ count</th><th>⚪ count</th></tr>${rows}
+      $("heurTable").innerHTML = `<table class="lab-table"><tr><th>Pattern</th><th>Weight</th><th>count</th><th>count</th></tr>${rows}
         <tr><th>Total points</th><td></td><th>${d.black_points.toLocaleString()}</th><th>${d.white_points.toLocaleString()}</th></tr></table>`;
     } catch (err) { $("heurVerdict").textContent = "Couldn't reach the Python server."; }
+  },
+  async formulation() {
+    let board, color, src;
+    if (Game.inProgress()) { board = Game.board; color = Game.turn; src = `Filled in live from your current game (${Game.size}×${Game.size}, move ${Game.moves.length}).`; }
+    else {
+      board = this.sampleBoard(15); color = "white";
+      src = "Filled in from a sample 15×15 position. Start a game and come back to see your own board here.";
+    }
+    $("formSource").textContent = src;
+    try {
+      const d = await api("/api/formulation", { board, color });
+      $("formTable").innerHTML = d.components.map((c) => `<tr><th>${c.name}</th><td>${escapeHtml(c.text)}</td></tr>`).join("");
+      const big = (n) => n.toLocaleString();
+      $("formNumbers").innerHTML = `
+        <div><b>${d.size}×${d.size}</b><span>board</span></div>
+        <div><b>${d.empty}</b><span>legal actions now</span></div>
+        <div><b>${d.candidates}</b><span>candidates the AI keeps</span></div>
+        <div><b>≈ 10<sup>${d.state_space_digits}</sup></b><span>possible boards (upper bound)</span></div>
+        <div><b>${big(d.tree_depth3_uninformed)}</b><span>boards 3 moves ahead, uninformed</span></div>
+        <div><b>${big(d.tree_depth3_informed)}</b><span>boards 3 moves ahead, with candidates</span></div>`;
+    } catch (err) { $("formTable").innerHTML = "<tr><td>Couldn't reach the Python server.</td></tr>"; }
+  },
+  fuzzyTimer: null,
+  fuzzyInit() {
+    const upd = () => {
+      $("fzAccV").textContent = `${$("fzAcc").value}%`; $("fzMisV").textContent = $("fzMis").value; $("fzResV").textContent = `${$("fzRes").value}%`;
+      clearTimeout(this.fuzzyTimer); this.fuzzyTimer = setTimeout(() => this.fuzzy(), 120);
+    };
+    ["fzAcc", "fzMis", "fzRes"].forEach((id) => $(id).addEventListener("input", upd));
+    $("fzMine").onclick = async () => {
+      const me = Player.get();
+      if (!me) return;
+      const d = await api(`/api/smart-match?player=${encodeURIComponent(me.name)}`);
+      if (!d.recent) { toast("Play a game against a robot first."); return; }
+      $("fzAcc").value = Math.round(d.recent.accuracy); $("fzMis").value = Math.min(10, Math.round(d.recent.mistakes * 2) / 2);
+      $("fzRes").value = Math.round(d.recent.results * 100); upd();
+    };
+  },
+  fuzzyChart(curve, crisp, lo, hi, labels) {
+    const W = 320, H = 120, P = 10, x = (v) => P + ((v - lo) / (hi - lo)) * (W - 2 * P), y = (v) => H - 22 - v * (H - 40);
+    const area = `M${x(curve[0][0])},${y(0)} ` + curve.map(([vx, vy]) => `L${x(vx).toFixed(1)},${y(vy).toFixed(1)}`).join(" ") + ` L${x(curve[curve.length - 1][0])},${y(0)} Z`;
+    const ticks = labels.map(([v, t]) => `<text x="${x(v)}" y="${H - 6}" text-anchor="middle" class="chart-label">${t}</text>`).join("");
+    return `<svg viewBox="0 0 ${W} ${H}" class="fz-chart"><line x1="${P}" x2="${W - P}" y1="${y(0)}" y2="${y(0)}" class="chart-grid"/>
+      <path d="${area}" class="fz-area"/><line x1="${x(crisp)}" x2="${x(crisp)}" y1="${y(1.05)}" y2="${y(0)}" class="fz-crisp"/>
+      <text x="${x(crisp)}" y="${y(1.05) - 2}" text-anchor="middle" class="chart-value">${crisp}</text>${ticks}</svg>`;
+  },
+  async fuzzy() {
+    const body = { accuracy: +$("fzAcc").value, mistakes: +$("fzMis").value, results: +$("fzRes").value / 100 };
+    let d;
+    try { d = await api("/api/fuzzy", body); } catch (err) { $("fzOut").textContent = "Couldn't reach the Python server."; return; }
+    const names = { accuracy: "Accuracy", mistakes: "Mistakes", results: "Results" };
+    $("fzMemb").innerHTML = Object.entries(d.memberships).map(([v, sets]) => `
+      <div class="fz-var"><b>${names[v]} = ${v === "results" ? Math.round(d.inputs[v] * 100) + "%" : d.inputs[v]}</b>
+        ${(FUZZY_ORDER[v] || Object.keys(sets)).map((k) => [k, sets[k]]).map(([k, m]) => `<div class="fz-row"><span>${k}</span><span class="t-bar"><i style="width:${m * 100}%"></i></span><span class="t-val">${m.toFixed(2)}</span></div>`).join("")}
+      </div>`).join("");
+    $("fzRules").innerHTML = d.rules.map((r) => `
+      <div class="fz-rule ${r.strength > 0 ? "on" : ""}"><span>${escapeHtml(r.rule)}</span>
+        <span class="t-bar"><i style="width:${r.strength * 100}%"></i></span><span class="t-val">${r.strength.toFixed(2)}</span></div>`).join("");
+    const rec = d.adjust > 0.3 ? "a stronger robot" : d.adjust < -0.3 ? "an easier robot" : "a robot of the same strength";
+    $("fzOut").innerHTML = `
+      <p><b>Skill = ${d.skill.toFixed(1)} / 100 → ${d.skill_label}</b></p>
+      ${this.fuzzyChart(d.skill_curve, Math.round(d.skill), 0, 100, [[10, "beginner"], [50, "intermediate"], [90, "advanced"]])}
+      <p><b>Difficulty change = ${d.adjust.toFixed(2)} → ${d.adjust_label}</b></p>
+      ${this.fuzzyChart(d.adjust_curve, +d.adjust.toFixed(2), -1, 1, [[-0.8, "easier"], [0, "same"], [0.8, "harder"]])}
+      <p class="small">Smart Match would now pick <b>${rec}</b>. The shaded shape is the aggregated output, and the line is its centroid.</p>`;
+    $("fzMine").hidden = !Player.get();
+  },
+  async fairness() {
+    $("fairRun").disabled = true; $("fairOut").innerHTML = "<p>Foxy is playing Foxy 10 times… (about 10 seconds)</p>";
+    try {
+      const d = await api("/api/fairness?games=10");
+      const bar = (label, n, cls) => `<div class="bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill ${cls}" style="width:${(n / d.games) * 100}%"></div></div><div class="bar-val">${n} of ${d.games}</div></div>`;
+      $("fairOut").innerHTML = bar("Black wins", d.black, "un") + bar("White wins", d.white, "in") + bar("Draws", d.draw, "") +
+        `<p><b>${d.conclusion}</b> That's why the project swaps colours and adjusts ratings for colour.</p>`;
+    } catch (err) { $("fairOut").textContent = "Couldn't reach the Python server."; }
+    $("fairRun").disabled = false;
   },
   init() {
     document.querySelectorAll(".lab-tab").forEach((t) => t.addEventListener("click", () => {
       document.querySelectorAll(".lab-tab").forEach((x) => x.classList.toggle("active", x === t));
       document.querySelectorAll(".lab-panel").forEach((p) => p.classList.toggle("active", p.id === "lab-" + t.dataset.lab));
+      if (t.dataset.lab === "form") this.formulation();
+      if (t.dataset.lab === "fuzzy") this.fuzzy();
     }));
+    this.fuzzyInit();
+    $("fairRun").onclick = () => this.fairness();
     $("cmpRun").onclick = () => this.compare();
     $("spaceRun").onclick = () => this.space();
     this.heurView = new BoardView($("heurBoard"), { size: 9, coords: false, onClick: (r, c) => this.heurClick(r, c) });
@@ -881,33 +1358,141 @@ const Lab = {
   },
 };
 
+/* ------------------------------------------------------------------ AI tutor */
+const LESSONS = [
+  { kind: "win", seed: 3, title: "Finish the job", idea: "When you have four in a row with an empty end, play there and win. <b>Always check this first.</b>" },
+  { kind: "block", seed: 3, title: "Block the four", idea: "If your opponent has four in a row, you <b>must</b> block the empty end, or you lose on the next move." },
+  { kind: "open_three", seed: 3, title: "Stop the open three", idea: "Three in a row with space on <b>both</b> sides turns into an open four, which can't be stopped. Block one end now." },
+  { kind: "open_four", seed: 3, title: "The open four", idea: "Four in a row with <b>both ends empty</b>: your opponent can block only one end, so you win next move." },
+  { kind: "fork", seed: 3, title: "The double attack", idea: "Make <b>two threats with one stone</b>. Your opponent can stop only one of them." },
+];
+const PUZZLE_TYPES = { win: "Win now", block: "Block", open_three: "Stop open three", open_four: "Open four", fork: "Double attack" };
+
+const Tutor = {
+  view: null, mode: "lessons", idx: 0, kind: "win", p: null, done: false,
+  solved: store.get("gomoku-tutor", { lessons: {}, puzzles: 0 }),
+  init() {
+    this.view = new BoardView($("tutorBoard"), { size: 9, onClick: (r, c) => this.click(r, c) });
+    this.view.canHover = (r, c) => this.p && !this.done && !this.p.board[r][c];
+    document.querySelectorAll(".learn-tab").forEach((t) => t.addEventListener("click", () => this.tab(t.dataset.learn)));
+    $("tutorHint").onclick = () => this.hint();
+    $("tutorShow").onclick = () => this.show();
+    $("tutorNext").onclick = () => this.next();
+    $("tutorList").onclick = (e) => {
+      const b = e.target.closest("[data-item]");
+      if (!b) return;
+      if (this.mode === "lessons") this.loadLesson(+b.dataset.item); else this.loadPuzzle(b.dataset.item);
+    };
+  },
+  tab(name) {
+    document.querySelectorAll(".learn-tab").forEach((x) => x.classList.toggle("active", x.dataset.learn === name));
+    $("learn-rules").hidden = name !== "rules";
+    $("learn-practice").hidden = name !== "practice";
+    $("learn-tutor").hidden = !(name === "lessons" || name === "puzzles");
+    if (name === "lessons") { this.mode = "lessons"; this.loadLesson(this.idx); }
+    if (name === "puzzles") { this.mode = "puzzles"; this.loadPuzzle(this.kind); }
+  },
+  renderList() {
+    $("tutorListTitle").textContent = this.mode === "lessons" ? "Lessons" : "New puzzle from the AI";
+    $("tutorList").innerHTML = this.mode === "lessons"
+      ? LESSONS.map((l, i) => `<button class="tutor-item ${i === this.idx ? "active" : ""}" data-item="${i}">
+          <span>${this.solved.lessons[i] ? "" : i + 1}</span>${l.title}</button>`).join("")
+      : Object.entries(PUZZLE_TYPES).map(([k, t]) => `<button class="tutor-item ${k === this.kind ? "active" : ""}" data-item="${k}"><span></span>${t}</button>`).join("")
+        + `<p class="small">Every click makes a brand-new puzzle: two robots play until the AI finds a position worth learning from.</p>`;
+    $("tutorScore").textContent = `Lessons done: ${Object.keys(this.solved.lessons).length} / ${LESSONS.length} · AI puzzles solved: ${this.solved.puzzles}`;
+  },
+  async fetch(url) {
+    this.done = false; this.p = null;
+    $("tutorSay").innerHTML = this.mode === "puzzles" ? `The AI is inventing a puzzle for you<span class="dots"></span>` : "Loading the lesson…";
+    try { this.p = await api(url); } catch (err) { $("tutorSay").textContent = "Couldn't reach the Python server. Is web_app.py running?"; return false; }
+    this.view.setSize(this.p.size); this.view.hoverColor = this.p.color;
+    this.p.board.forEach((row, r) => row.forEach((v, c) => { if (v) this.view.addStone(r, c, v, 0, false); }));
+    this.view.markLast();
+    $("tutorTurn").innerHTML = `You play <span class="mini ${this.p.color}"></span> <b>${this.p.color}</b>. Click the right square.`;
+    return true;
+  },
+  async loadLesson(i) {
+    this.idx = i; this.renderList();
+    const L = LESSONS[i];
+    if (!(await this.fetch(`/api/puzzle?kind=${L.kind}&size=9&seed=${L.seed}`))) return;
+    $("tutorSay").innerHTML = `<b>Lesson ${i + 1}: ${L.title}.</b> ${this.p.task}`;
+    $("tutorIdea").innerHTML = `${L.idea}`;
+  },
+  async loadPuzzle(kind) {
+    this.kind = kind; this.renderList();
+    if (!(await this.fetch(`/api/puzzle?kind=${kind}&size=9`))) return;
+    $("tutorSay").innerHTML = `<b>${PUZZLE_TYPES[kind]}</b>: ${this.p.task}`;
+    $("tutorIdea").innerHTML = `This puzzle was made by the AI just now from a robot-vs-robot game.`;
+  },
+  async click(r, c) {
+    if (!this.p || this.done) return;
+    if (this.p.board[r][c]) { Sound.oops(); return; }
+    let d;
+    try { d = await api("/api/check", { board: this.p.board, color: this.p.color, kind: this.p.kind, move: [r, c] }); }
+    catch (err) { return; }
+    if (d.correct) {
+      this.done = true;
+      this.view.addStone(r, c, this.p.color);
+      this.view.marks([[r, c]], "good-mark", "✓");
+      $("tutorSay").innerHTML = `<b>${escapeHtml(d.message)}</b>`;
+      Sound.win();
+      if (this.mode === "lessons") this.solved.lessons[this.idx] = true; else this.solved.puzzles++;
+      store.set("gomoku-tutor", this.solved); this.renderList();
+      if (this.mode === "lessons" && Object.keys(this.solved.lessons).length === LESSONS.length) confetti();
+    } else {
+      Sound.oops();
+      const g = this.view.marks([[r, c]], "bad-mark", "✗");
+      setTimeout(() => g.remove(), 1500);
+      $("tutorSay").innerHTML = `${escapeHtml(d.message.replace(/ The answers? (is|are) .*$/, ""))} Try again, or ask for a hint.`;
+    }
+  },
+  hint() {
+    if (!this.p) return;
+    const [r, c] = this.p.answers[0];
+    const g = this.view.marks([[r - (r > 0 ? 1 : 0), c]], "hint-area");
+    $("tutorSay").innerHTML = `Look near row ${r + 1}, around column ${String.fromCharCode(65 + c)}. ${this.p.task}`;
+    setTimeout(() => g.remove(), 2500);
+  },
+  show() {
+    if (!this.p) return;
+    this.done = true;
+    this.view.marks(this.p.answers, "good-mark", "✓");
+    $("tutorSay").innerHTML = `The answer: <b>${this.p.answers.map(([r, c]) => cellName(r, c)).join(", ")}</b>. ${this.p.task}`;
+  },
+  next() {
+    if (this.mode === "lessons") this.loadLesson((this.idx + 1) % LESSONS.length);
+    else this.loadPuzzle(this.kind);
+  },
+};
+
 /* ------------------------------------------------------------------ learn page + hero */
 function miniBoard(stones, size = 7, ring = []) {
   const s = 24, p = 14, w = p * 2 + (size - 1) * s;
-  let out = `<svg viewBox="0 0 ${w} ${w}"><rect width="${w}" height="${w}" rx="12" fill="#ebb771"/>`;
+  let out = `<svg viewBox="0 0 ${w} ${w}"><rect width="${w}" height="${w}" rx="4" fill="#557591" stroke="#9bb4ca"/>`;
   for (let i = 0; i < size; i++) {
-    out += `<line x1="${p}" y1="${p + i * s}" x2="${p + (size - 1) * s}" y2="${p + i * s}" stroke="#8b5a2b" stroke-width="1.2" opacity=".7"/>`;
-    out += `<line x1="${p + i * s}" y1="${p}" x2="${p + i * s}" y2="${p + (size - 1) * s}" stroke="#8b5a2b" stroke-width="1.2" opacity=".7"/>`;
+    out += `<line x1="${p}" y1="${p + i * s}" x2="${p + (size - 1) * s}" y2="${p + i * s}" stroke="#2a4258" stroke-width="1"/>`;
+    out += `<line x1="${p + i * s}" y1="${p}" x2="${p + i * s}" y2="${p + (size - 1) * s}" stroke="#2a4258" stroke-width="1"/>`;
   }
   for (const [r, c, col] of stones) {
-    out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="10" fill="${col === "b" ? "#1b1b1b" : "#f4f4f4"}" stroke="${col === "b" ? "#000" : "#bbb"}"/>`;
+    out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="10" fill="${col === "b" ? "#121825" : "#eef4f7"}" stroke="${col === "b" ? "rgba(255,255,255,.5)" : "rgba(0,0,0,.2)"}"/>`;
   }
-  for (const [r, c] of ring) out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="11" fill="none" stroke="#e34948" stroke-width="3"/>`;
+  for (const [r, c] of ring) out += `<circle cx="${p + c * s}" cy="${p + r * s}" r="11.5" fill="none" stroke="#35d39a" stroke-width="2"/>`;
   return out + "</svg>";
 }
 function buildLearn() {
   const cards = [
     { t: "Take turns", d: "Black goes first. Then you take turns putting one stone on any empty crossing.", b: miniBoard([[3, 3, "b"], [3, 4, "w"], [4, 4, "b"]]) },
-    { t: "Make five in a row", d: "Get 5 of your stones in a line: across ➡️, down ⬇️ or diagonal ↘️ ↗️.", b: miniBoard([[1, 1, "b"], [2, 2, "b"], [3, 3, "b"], [4, 4, "b"], [5, 5, "b"], [2, 4, "w"], [3, 4, "w"]], 7, [[1, 1], [5, 5]]) },
-    { t: "Block your opponent", d: "If your opponent has 4 in a row, put a stone at the end to stop them!", b: miniBoard([[3, 1, "w"], [3, 2, "w"], [3, 3, "w"], [3, 4, "w"], [3, 5, "b"], [2, 3, "b"]], 7, [[3, 0]]) },
+    { t: "Make five in a row", d: "Get 5 of your stones in a line: across, down or diagonally.", b: miniBoard([[1, 1, "b"], [2, 2, "b"], [3, 3, "b"], [4, 4, "b"], [5, 5, "b"], [2, 4, "w"], [3, 4, "w"]], 7, [[1, 1], [5, 5]]) },
+    { t: "Block your opponent", d: "If your opponent has 4 in a row, put a stone at the end to stop them.", b: miniBoard([[3, 1, "w"], [3, 2, "w"], [3, 3, "w"], [3, 4, "w"], [3, 5, "b"], [2, 3, "b"]], 7, [[3, 0]]) },
     { t: "Watch for open threes", d: "Three in a row with empty space on both sides is dangerous. Block one end early.", b: miniBoard([[3, 2, "w"], [3, 3, "w"], [3, 4, "w"], [4, 3, "b"]], 7, [[3, 1], [3, 5]]) },
-    { t: "Double attack!", d: "Make two threats at once. Your opponent can only block one of them!", b: miniBoard([[3, 1, "b"], [3, 2, "b"], [3, 3, "b"], [1, 4, "b"], [2, 4, "b"], [4, 5, "w"], [5, 5, "w"]], 7, [[3, 4]]) },
-    { t: "Climb the levels", d: "10 levels from 🐣 to 🐉. Boards grow from 9×9 to 15×15. Pause any time, and continue later!", b: `<div style="font-size:44px;padding:26px 0">🐣🦇🦊🐢🦉🐉</div>` },
+    { t: "Double attack", d: "Make two threats at once. Your opponent can only block one of them.", b: miniBoard([[3, 1, "b"], [3, 2, "b"], [3, 3, "b"], [1, 4, "b"], [2, 4, "b"], [4, 5, "w"], [5, 5, "w"]], 7, [[3, 4]]) },
+    { t: "Climb the levels", d: "Ten levels, from random guessing to iterative deepening. Boards grow from 9×9 to 15×15. Pause any time and continue later.", b: miniBoard([[3, 3, "b"], [3, 4, "w"], [4, 4, "b"], [2, 2, "w"]]) },
   ];
   $("learnGrid").innerHTML = cards.map((c, i) => `<div class="learn-card"><span class="step">${i + 1}</span><h3>${c.t}</h3>${c.b}<p>${c.d}</p></div>`).join("");
 }
 function buildHero() {
   const svg = document.querySelector(".hero-board");
+  if (!svg) return;
   svg.innerHTML = miniBoard([[1, 1, "b"], [2, 2, "b"], [3, 3, "b"], [4, 4, "b"], [2, 3, "w"], [3, 2, "w"], [4, 3, "w"], [1, 3, "w"], [5, 2, "b"]], 8, [[5, 5]])
     .replace(/^<svg[^>]*>|<\/svg>$/g, "");
   svg.setAttribute("viewBox", "0 0 196 196");
@@ -915,6 +1500,14 @@ function buildHero() {
 
 /* ------------------------------------------------------------------ start up */
 $("soundBtn").onclick = () => setSound(!Sound.on);
+$("themeBtn").onclick = () => openThemes();
+document.querySelectorAll("[data-open-themes]").forEach((b) => { b.onclick = () => openThemes(); });
+$("pThemeBtn").onclick = () => openThemes();
+$("themeGrid").onclick = (e) => { const b = e.target.closest("[data-theme]"); if (b) { applyTheme(b.dataset.theme); Sound.click(); } };
+$("showThinking").checked = store.get("gomoku-show-thinking", true);
+$("coachOn").checked = store.get("gomoku-coach", true);
+$("coachOn").onchange = () => { store.set("gomoku-coach", $("coachOn").checked); if (!$("coachOn").checked) $("coachBar").hidden = true; };
+$("showThinking").onchange = () => store.set("gomoku-show-thinking", $("showThinking").checked);
 $("pSoundBtn").onclick = () => setSound(!Sound.on);
 setSound(Sound.on);
 
@@ -928,6 +1521,7 @@ $("newBtn").onclick = async () => {
   if (!Game.inProgress() || await confirmBox("Restart?", "Start this game again from the beginning?")) Game.restart();
 };
 $("pauseBtn").onclick = () => Game.pause();
+$("levelSeg").onclick = (e) => { const b = e.target.closest("[data-lvl]"); if (b && !b.disabled) Game.setLevel(b.dataset.lvl); };
 $("backBtn").onclick = () => Game.exit();
 $("resumeBtn").onclick = () => Game.resume();
 $("pRestartBtn").onclick = async () => {
@@ -947,6 +1541,8 @@ $("menuBtn").onclick = () => go(Game.levelIdx !== null ? "levels" : "home");
 document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select, textarea")) return;
   if (!$("confirm").hidden) { if (e.key === "Escape") $("confirmNo").click(); return; }
+  if (!$("themeModal").hidden) { if (e.key === "Escape") $("themeClose").click(); return; }
+  if (!$("playerModal").hidden) return;
   if (e.key === "Escape" && !$("modal").hidden) { $("modal").hidden = true; return; }
   if (currentScreen !== "game") return;
   const k = e.key.toLowerCase();
@@ -959,5 +1555,5 @@ document.addEventListener("keydown", (e) => {
 addEventListener("beforeunload", () => Game.save());
 document.addEventListener("visibilitychange", () => { if (document.hidden) Game.save(); });
 
-buildPicker(); buildLearn(); buildHero(); Watch.init(); Lab.init(); Lab.loadAgents();
+buildPicker(); buildLearn(); buildHero(); Watch.init(); Lab.init(); Lab.loadAgents(); Tutor.init(); renderPlayerChip(); renderThemes();
 refreshContinue();
