@@ -30,6 +30,36 @@ Player vs Player mode, move suggestions and the rule-based / XGBoost post-game c
 
 ---
 
+## 🎯 Theme: AI for Human Insight and Capability Enhancement
+
+The goal is not an AI that just beats people. The goal is an AI that **helps people get better at a
+thinking game**. A child (or any beginner) plays Gomoku, and the AI turns every game into feedback
+they can understand and act on:
+
+| How the AI helps the human | Where |
+|---|---|
+| **Teaches** the ideas step by step and checks the answers | 🎓 Learn → Lessons (AI-checked, with hints and explanations) |
+| **Invents new practice problems** from its own games | 🎓 Learn → AI puzzles |
+| **Coaches every move** while you play (great / careful / mistake + a better square) | 🎓 "Coach me" in every game |
+| **Explains its own thinking** (the moves it compared and why it chose one) | AI panel + numbered circles on the board |
+| **Grades** each game (accuracy %, A+ to D) and lists strong moves and mistakes | Result screen |
+| **Finds patterns** in your games (most common mistake, improvement trend, colour results) | 🏆 Scoreboard → "What the AI noticed about you" |
+| **Adapts** to you: fuzzy logic judges your skill and picks a robot that's just right | 🎯 Smart Match, result screen |
+| **Shows how AI works** with live experiments | 🧠 AI Lab |
+
+## 📋 Assessment criteria → where they are in the project
+
+| Criterion (guidelines) | In the project |
+|---|---|
+| 1. Problem statement | Theme section above, synopsis section 2 |
+| 2. State space search | AI Lab → **Problem formulation** (state, initial state, actions, transition model, goal test, utility, path cost, strategy, filled in live from your game) · `tutor.formulate()` · Blind / Minimax / Alpha-Beta / Expert agents in `agents.py` · AI Lab → Search and States vs size |
+| 3. Knowledge representation | Production rules (`RuleBasedAgent`), pattern knowledge base (`PATTERNS` weights), board as a matrix and lines as pattern strings (`agents.py`); fuzzy rule base (`fuzzy_logic.RULES`) |
+| 4. Intelligent system design | Browser UI → Flask API (`web_app.py`) → agents / analysis / tutor / fuzzy modules → SQLite (`player_db.py`) |
+| 5. **Fuzzy logic** | `fuzzy_logic.py`: Mamdani inference (3 inputs, 2 outputs, 12 rules, centroid). Used by Smart Match and the post-game coach; AI Lab → **Fuzzy logic** shows every step with sliders |
+| 6. Other AI techniques | Heuristic evaluation, iterative deepening, transposition table (Zobrist hashing), move ordering, XGBoost ML coach (`gomoku_ml_coach.py`, desktop app), Elo rating |
+| Bonus: originality | AI Tutor with AI-generated puzzles, live coach, visible AI thinking, AI Lab with live experiments, fuzzy Smart Match, AI-graded games |
+| Bonus: ethics (bias & fairness) | First-move bias measured and corrected (colour-swapped Robot Battle, colour-fair rating), live bias test, transparency, privacy (local data only, **delete my data**), AI Lab → **Fairness & ethics** |
+
 ## 🧭 Synopsis → Implementation
 
 | Synopsis requirement | Where it is implemented |
@@ -44,7 +74,7 @@ Player vs Player mode, move suggestions and the rule-based / XGBoost post-game c
 | AI decision process (7.9) | `Agent.choose_move()` + live **AI decision** panel in the GUI |
 | Difficulty levels (7.10) | Easy / Medium / Hard / **Expert** dropdown |
 | Game analysis: missed wins, failed defence, strong moves (7.11) | `gomoku_coach.py`, `gomoku_ml_coach.py`, post-game summary window |
-| Data collection: timestamp, player, move, board state, duration, difficulty, AI decision info, result (8) | `games/*.csv`, `results/tournament_moves.csv` |
+| Data collection: timestamp, player, move, board state, duration, difficulty, AI decision info, result (8) | `games/*.csv`, `results/tournament_moves.csv`, and the SQLite player database `data/gomoku.db` (`player_db.py`) |
 | Benchmark strategies against each other (Objectives) | `benchmark.py` → `results/` CSVs and charts |
 | Data analysis with Pandas / Jupyter (9) | `analysis/gomoku_analysis.ipynb` |
 | AI-vs-AI games (Future scope) | **Robot Battle** (web) and **AI Vs AI** (`ai_vs_ai.py`) pages, plus the tournament |
@@ -52,7 +82,7 @@ Player vs Player mode, move suggestions and the rule-based / XGBoost post-game c
 | Uninformed vs informed search (5.3) | `BlindMinimaxAgent` vs `MinimaxAgent` / `AlphaBetaAgent`; live experiment in AI Lab → Search |
 | State space grows with problem size (5.4) | Boards from 9×9 to 15×15; benchmark experiment 3 (`results/state_space.png`); AI Lab → States vs size |
 | Heuristic function (7.7) | AI Lab → Heuristic: build a position and see every pattern, weight and the score |
-| Testing (Phase 10) | `tests/` (79 tests: rules, agents, board sizes, web API, analysis) |
+| Testing (Phase 10) | `tests/` (119 tests: rules, agents, board sizes, web API, analysis, grading, ratings, fuzzy logic, tutor, fairness, privacy) |
 
 ---
 
@@ -226,14 +256,29 @@ The browser only draws the board; every AI move is computed in Python (`web_app.
 | ▶️ **Continue** | games are saved automatically; leave at any time and continue from the home screen |
 | ← **Back / Exit** | asks before leaving a game in progress |
 | 💡 Hints, ↩️ Undo, ⏱ timer | 3 hints per game; undo takes back your move and the AI's reply |
-| 🧠 **How the computer thought** | boards searched, depth, time, agent type and search type for every AI move |
+| 🧠 **AI thinks before every move** | before each stone, the board shows the moves the AI compared (numbered circles, the chosen one turns green ✓); the panel lists them with their scores, plus boards searched, depth and time. Can be switched off |
+| 🤖 **The AI rates your game** | after every game the AI grades your play: accuracy % (each of your moves compared with the best move available at that moment) and a grade A+ to D |
+| 🏆 **Rating and Scoreboard** | a chess-style (Elo) rating per player: beat stronger robots to climb faster, play accurately for a bonus. Titles from 🪨 Pebble to 🐉 Grandmaster, a rating chart, your record against each robot, your game history and a leaderboard |
+| 🎨 **Board themes** | Classic Wood, Ocean, Candy, Forest, Sunset, Space and Paper |
+| 🎓 **AI Tutor** | Rules, 5 lessons the AI checks and explains (win, block, open three, open four, double attack), unlimited AI-generated puzzles, practice games with the coach |
+| 🎓 **Live coach** | after each of your moves: ✅ great / 👍 good / ⚠️ careful / ❌ mistake, why, and ★ on a better square |
+| 🎯 **Smart Match** | fuzzy logic reads your recent accuracy, mistakes and results and picks your next robot |
+| 💡 **Player insights** | most common mistake, improvement trend, results by colour, strongest robot beaten |
+| 🗑 **Delete my data** | removes a player's rating and all their games from the database |
 | 📊 Post-game report | stars, great moves, mistakes, danger moments and a tip |
 | 👫 Friend mode, ⚔️ Robot Battle | two players on one screen; any two AIs on any board size. Robots swap colours every game and each random opening is played twice (once with each robot as Black), so the scoreboard compares robots fairly and counts Black's first-move advantage separately |
 | 🧠 **AI Lab** | the AI theory behind the game, with live experiments (see below) |
 
 Keyboard: `P`/`Esc` pause, `H` hint, `U` undo, `R` restart. Games are saved to `games/web/`.
 
-**AI Lab tabs:** Agent (perceive-decide-act, PEAS, vacuum-world comparison) · Environment (fully
+**How the rating works (`player_db.py`).** Each robot has a fixed rating: 🐣 Pip 600, 🦇 Batty 700,
+🦊 Foxy 1100, 🐢 Turtle Max 1250, 🦉 Professor Owl 1500, 🐉 Draco 1750. New players start at 1000.
+After a game, the change is the Elo formula `K × (result − expected)`, where `expected = 1 / (1 + 10^((robot − player)/400))`
+and K is 48 for a player's first 10 games and 32 after that, plus an accuracy bonus of `(accuracy − 60) / 10`.
+Players and games are stored in the SQLite database **`data/gomoku.db`** (tables `players` and `games`),
+which stays on your computer and is not uploaded to GitHub.
+
+**AI Lab tabs:** Problem formulation (the state-space formulation, live) · Fuzzy logic (sliders, memberships, rules, centroid) · Fairness & ethics (live bias test) · Agent (perceive-decide-act, PEAS, vacuum-world comparison) · Environment (fully
 observable, deterministic, sequential, static, discrete, adversarial) · Agent types (simple reflex /
 goal-based / utility-based for every robot) · Search (run blind and informed search on the same
 position) · States vs size (measure how the state space grows from 7×7 to 15×15) · Heuristic

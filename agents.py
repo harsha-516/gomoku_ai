@@ -377,6 +377,12 @@ class SearchStats:
     time_ms: float = 0.0
     score: int = 0
     reason: str = ""
+    # the moves the agent weighed at the top of its search, best first:
+    # [{"row", "col", "score"}] - shown in the GUI as the agent "thinking"
+    considered: List[Dict] = field(default_factory=list)
+
+    def consider(self, move: Move, score: float) -> None:
+        self.considered.append({"row": move[0], "col": move[1], "score": int(score)})
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -409,6 +415,12 @@ class Agent:
         board = [row[:] for row in state]  # never mutate the caller's board
         move = self._choose(board, color)
         self.stats.time_ms = (time.perf_counter() - start) * 1000
+        ranked = sorted(self.stats.considered, key=lambda m: m["score"], reverse=True)
+        if move is not None and ranked:  # make sure the chosen move is always listed first
+            chosen = [m for m in ranked if (m["row"], m["col"]) == move] or \
+                     [{"row": move[0], "col": move[1], "score": int(self.stats.score)}]
+            ranked = chosen + [m for m in ranked if (m["row"], m["col"]) != move]
+        self.stats.considered = ranked[:8]
         if move is not None and not self.stats.reason:
             self.stats.reason = describe_move(state, move[0], move[1], color)
         return move
@@ -435,7 +447,13 @@ class RandomAgent(Agent):
         moves = legal_moves(state)
         self.stats.nodes = len(moves)
         self.stats.reason = "Random legal move"
-        return self.rng.choice(moves) if moves else None
+        if not moves:
+            return None
+        move = self.rng.choice(moves)
+        # nothing is compared: these are just a few random squares, for the "dice roll" animation
+        for m in self.rng.sample(moves, min(5, len(moves))):
+            self.stats.consider(m, 0)
+        return move
 
 
 class RuleBasedAgent(Agent):
@@ -469,6 +487,8 @@ class RuleBasedAgent(Agent):
                 return max(hits, key=lambda m: move_score(state, m[0], m[1], color))
             return None
 
+        for m in cands:
+            self.stats.consider(m, move_score(state, m[0], m[1], color))
         mine = {m: local_threats(state, m[0], m[1], color) for m in cands}
         theirs = {m: local_threats(state, m[0], m[1], opp) for m in cands}
         rules = (
@@ -528,6 +548,7 @@ class MinimaxAgent(Agent):
             else:
                 val = self._minimax(state, self.depth - 1, False)
             state[r][c] = None
+            self.stats.consider((r, c), val)
             if val > best_val:
                 best_val, best_move = val, (r, c)
         self.stats.score = int(best_val) if best_move else 0
@@ -589,11 +610,14 @@ class BlindMinimaxAgent(Agent):
             else:
                 val = self._minimax(state, self.depth - 1, False)
             state[r][c] = None
+            self.stats.consider((r, c), val)
             if val > best_val:
                 best_val, best = val, [(r, c)]
             elif val == best_val:
                 best.append((r, c))
         self.stats.score = int(best_val)
+        # equal scores are truly indistinguishable to a blind search, so show a random sample of them
+        self.rng.shuffle(self.stats.considered)
         if self.stats.nodes >= self.node_limit:
             self.stats.reason = "Ran out of search budget: the board is too big to search blindly"
         elif best_val == 0:
@@ -657,6 +681,7 @@ class AlphaBetaAgent(MinimaxAgent):
             else:
                 val = self._alphabeta(state, self.depth - 1, alpha, beta, False)
             state[r][c] = None
+            self.stats.consider((r, c), val)
             if val > alpha or best_move is None:
                 alpha, best_move = max(alpha, val), (r, c)
         self.stats.score = int(alpha) if best_move else 0
@@ -740,15 +765,17 @@ class ExpertAgent(Agent):
         root_moves = generate_moves(state, color, self.max_candidates)
         if len(root_moves) == 1:
             self.stats.depth = 1
+            self.stats.consider(root_moves[0], WIN_SCORE)
             return root_moves[0]
         h = self._hash(state)
         best_move = root_moves[0] if root_moves else None
         for depth in range(1, self.max_depth + 1):
             try:
-                val, move = self._root(state, color, depth, h, root_moves, best_move)
+                val, move, scores = self._root(state, color, depth, h, root_moves, best_move)
             except _Timeout:
                 break
             best_move = move
+            self.stats.considered = [{"row": m[0], "col": m[1], "score": int(v)} for m, v in scores]
             self.stats.depth, self.stats.score = depth, val
             if abs(val) >= WIN_SCORE // 2:
                 break  # forced result found, deeper search is pointless
@@ -759,6 +786,7 @@ class ExpertAgent(Agent):
             moves = [pv] + [m for m in moves if m != pv]
         alpha, beta = -float("inf"), float("inf")
         best_move = moves[0]
+        scores = []
         for r, c in moves:
             state[r][c] = color
             self.stats.nodes += 1
@@ -768,9 +796,10 @@ class ExpertAgent(Agent):
                 val = -self._negamax(state, other(color), depth - 1, -beta, -alpha,
                                      h ^ self.zobrist[(r, c, color)])
             state[r][c] = None
+            scores.append(((r, c), val))
             if val > alpha:
                 alpha, best_move = val, (r, c)
-        return int(alpha), best_move
+        return int(alpha), best_move, scores
 
     def _negamax(self, state, color, depth, alpha, beta, h):
         if self.stats.nodes & 255 == 0 and time.perf_counter() > self.deadline:

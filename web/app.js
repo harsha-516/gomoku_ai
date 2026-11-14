@@ -173,6 +173,36 @@ function confetti() {
   })(performance.now());
 }
 
+/* ------------------------------------------------------------------ board themes */
+const THEMES = {
+  // cute themes: decorations on the board and, for some, animal stones (black side / white side)
+  clouds:  { name: "Cloud Castle", icon: "☁️", cute: true, board: ["#f2fbff", "#d3efff", "#b4e1ff"], line: "#5b8db8", grain: "#ffffff", decor: "clouds" },
+  animals: { name: "Animal Friends", icon: "🐾", cute: true, board: ["#fff5df", "#ffe6b5", "#ffd88d"], line: "#a0722f", grain: "#ffffff",
+             decor: ["🐾"], stones: { black: { fill: "#6b4430", emoji: "🐶" }, white: { fill: "#fffaf0", emoji: "🐱" } } },
+  panda:   { name: "Bamboo Panda", icon: "🐼", cute: true, board: ["#eef9e4", "#d3edbb", "#b6de92"], line: "#3f6b2a", grain: "#ffffff",
+             decor: ["🎋", "🍃"], stones: { black: { fill: "#2e2e2e", emoji: "🐼" }, white: { fill: "#ffffff", emoji: "🐰" } } },
+  sea:     { name: "Under the Sea", icon: "🐠", cute: true, board: ["#c8f3ff", "#86d6f7", "#4aa9e0"], line: "#0f4c75", grain: "#ffffff",
+             decor: ["🫧", "🐚", "🌊"], stones: { black: { fill: "#1d3557", emoji: "🐙" }, white: { fill: "#fff6e0", emoji: "🐬" } } },
+  garden:  { name: "Flower Garden", icon: "🌸", cute: true, board: ["#fff3f8", "#ffd9ea", "#ffc4de"], line: "#b04a7a", grain: "#ffffff",
+             decor: ["🌸", "🌼", "🦋"], stones: { black: { fill: "#6a2c70", emoji: "🐞" }, white: { fill: "#fffbe6", emoji: "🐝" } } },
+  unicorn: { name: "Unicorn Sky", icon: "🦄", cute: true, board: ["#f3e8ff", "#ffe1f5", "#e0f0ff"], line: "#8a5cc7", grain: "#ffffff",
+             decor: ["✨", "⭐", "🌈"], stones: { black: { fill: "#5b3fa3", emoji: "🦄" }, white: { fill: "#fffdf5", emoji: "🌟" } } },
+  dino:    { name: "Dino Land", icon: "🦖", cute: true, board: ["#eef7d3", "#d4eba4", "#b8db7d"], line: "#4d6b1f", grain: "#ffffff",
+             decor: ["🌴", "🌋", "🦴"], stones: { black: { fill: "#2f5d3a", emoji: "🦖" }, white: { fill: "#fff8e7", emoji: "🥚" } } },
+  rainbow: { name: "Rainbow", icon: "🌈", cute: true, board: ["#ffd9d9", "#ffedc7", "#fffcc7", "#d9ffdb", "#d2ebff", "#e8d9ff"], line: "#7a6aa8", grain: "#ffffff", decor: ["⭐"] },
+  // classic themes
+  wood:   { name: "Classic Wood", icon: "🪵", board: ["#f6d49c", "#ebb771", "#dfa35c"], line: "#8b5a2b", grain: "#c98f4e" },
+  ocean:  { name: "Ocean", icon: "🌊", board: ["#c9efff", "#8fd3f5", "#5fb3e6"], line: "#1d4e7a", grain: "#ffffff" },
+  candy:  { name: "Candy", icon: "🍭", board: ["#ffe1f0", "#ffc2df", "#f9a3cb"], line: "#a23b72", grain: "#ffffff" },
+  forest: { name: "Forest", icon: "🌳", board: ["#d9efc4", "#b2db95", "#8cc56f"], line: "#2f5d1e", grain: "#5f8f3e" },
+  sunset: { name: "Sunset", icon: "🌅", board: ["#ffd8a8", "#ffb07c", "#f4845f"], line: "#7a2e1d", grain: "#fff1d6" },
+  space:  { name: "Space", icon: "🚀", board: ["#3b3170", "#252050", "#15132e"], line: "#a99ff0", grain: "#ffffff", edge: "#b8b0ff", stars: true },
+  paper:  { name: "Paper", icon: "📄", board: ["#fdfcf7", "#f5f2e6", "#ece8d8"], line: "#5a5a5a", grain: "#d8d2bd" },
+};
+let themeKey = store.get("gomoku-theme", "wood");
+if (!THEMES[themeKey]) themeKey = "wood";
+const theme = () => THEMES[themeKey];
+
 /* ------------------------------------------------------------------ board view */
 class BoardView {
   constructor(svg, { onClick, numbers = false, size = 15, coords = true } = {}) {
@@ -186,22 +216,53 @@ class BoardView {
     return e;
   }
   xy(r, c) { return [PAD + c * CELL, PAD + r * CELL]; }
-  setSize(n) { this.n = n; this.draw(); }
+  setSize(n) { this.n = n; this.placed = []; this.last = null; this.win = null; this.draw(); }
+  redraw() {
+    // re-draw the board (e.g. a new theme) keeping the stones, last move and winning line
+    const placed = this.placed, last = this.last, win = this.win;
+    this.draw(); this.placed = [];
+    placed.forEach((p) => this.addStone(p.r, p.c, p.color, p.num, false));
+    this.markLast(...(last || []));
+    if (win) this.showWin(win);
+  }
   draw() {
-    const svg = this.svg, n = this.n, W = PAD * 2 + (n - 1) * CELL, id = this.id;
+    const svg = this.svg, n = this.n, W = PAD * 2 + (n - 1) * CELL, id = this.id, t = theme();
     svg.setAttribute("viewBox", `0 0 ${W} ${W}`);
+    svg.style.setProperty("--wood-line", t.line);
     svg.innerHTML = "";
     const defs = this.el("defs", {});
     defs.innerHTML = `
       <linearGradient id="${id}-wood" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#f6d49c"/><stop offset=".5" stop-color="#ebb771"/><stop offset="1" stop-color="#dfa35c"/>
+        ${t.board.map((c, i) => `<stop offset="${i / (t.board.length - 1)}" stop-color="${c}"/>`).join("")}
       </linearGradient>
       <radialGradient id="${id}-gBlack" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#777"/><stop offset=".55" stop-color="#1b1b1b"/><stop offset="1" stop-color="#000"/></radialGradient>
       <radialGradient id="${id}-gWhite" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".7" stop-color="#e9e9e9"/><stop offset="1" stop-color="#c8c8c8"/></radialGradient>
       <filter id="${id}-shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="1.8" flood-opacity=".4"/></filter>`;
     this.el("rect", { x: 0, y: 0, width: W, height: W, rx: 26, fill: `url(#${id}-wood)` });
     for (let i = 0; i < Math.ceil(W / 72); i++) {
-      this.el("path", { d: `M0 ${30 + i * 72} Q ${W / 2} ${10 + i * 72 + (i % 2) * 30} ${W} ${36 + i * 72}`, stroke: "#c98f4e", "stroke-width": 1.2, fill: "none", opacity: 0.35 });
+      this.el("path", { d: `M0 ${30 + i * 72} Q ${W / 2} ${10 + i * 72 + (i % 2) * 30} ${W} ${36 + i * 72}`, stroke: t.grain, "stroke-width": 1.2, fill: "none", opacity: t.stars ? 0.08 : 0.35 });
+    }
+    if (t.stars) {
+      for (let i = 0; i < n * 3; i++) {
+        const x = (i * 97.3) % W, y = (i * 53.7 + (i % 7) * 31) % W;
+        this.el("circle", { cx: x, cy: y, r: (i % 3) * 0.6 + 0.6, fill: "#fff", opacity: 0.55 });
+      }
+    }
+    if (t.decor === "clouds") {
+      // soft clouds drifting behind the grid
+      for (let i = 0; i < Math.ceil(n / 2); i++) {
+        const cx = (i * 211 + 60) % (W - 60) + 30, cy = (i * 137 + 50) % (W - 60) + 30, k = 0.7 + (i % 3) * 0.25;
+        const g = this.el("g", { opacity: 0.75, class: "decor" });
+        [[0, 0, 34, 16], [-24, 6, 20, 12], [24, 6, 22, 13], [-6, -12, 20, 14]].forEach(([dx, dy, rx, ry]) =>
+          this.el("ellipse", { cx: cx + dx * k, cy: cy + dy * k, rx: rx * k, ry: ry * k, fill: "#fff" }, g));
+      }
+    } else if (Array.isArray(t.decor)) {
+      // little stickers around the board, kept faint so the grid stays easy to read
+      for (let i = 0; i < n + 3; i++) {
+        const x = (i * 157.3 + 23) % (W - 30) + 15, y = (i * 91.7 + (i % 5) * 47 + 19) % (W - 30) + 15;
+        this.el("text", { x, y, "text-anchor": "middle", "font-size": 18 + (i % 3) * 6, opacity: 0.28, class: "decor",
+                          transform: `rotate(${(i * 37) % 50 - 25} ${x} ${y})` }).textContent = t.decor[i % t.decor.length];
+      }
     }
     const end = PAD + (n - 1) * CELL;
     for (let i = 0; i < n; i++) {
@@ -237,25 +298,43 @@ class BoardView {
     this.ghost.setAttribute("fill", `url(#${this.id}-${this.hoverColor === "white" ? "gWhite" : "gBlack"})`);
     this.ghost.classList.add("show");
   }
-  clear() { this.stones.innerHTML = ""; this.overlay.innerHTML = ""; this.ghost.classList.remove("show"); }
+  clear() {
+    this.stones.innerHTML = ""; this.overlay.innerHTML = ""; this.ghost.classList.remove("show");
+    this.placed = []; this.last = null; this.win = null;
+  }
   addStone(r, c, color, num, animate = true) {
-    const [x, y] = this.xy(r, c);
+    const [x, y] = this.xy(r, c), edge = theme().edge;
+    this.placed.push({ r, c, color, num });
     const g = this.el("g", { class: "stone" + (animate ? " drop" : ""), "data-rc": `${r},${c}` }, this.stones);
-    this.el("circle", { cx: x, cy: y, r: 17, fill: `url(#${this.id}-${color === "black" ? "gBlack" : "gWhite"})`, filter: `url(#${this.id}-shadow)` }, g);
+    const skin = theme().stones && theme().stones[color];
+    if (skin) {
+      // animal stone: a coloured disc for the side, with the animal on top
+      this.el("circle", { cx: x, cy: y, r: 18, fill: skin.fill, stroke: color === "black" ? "#00000055" : "#00000033",
+                          "stroke-width": 1.5, filter: `url(#${this.id}-shadow)` }, g);
+      if (!(this.numbers && num)) this.el("text", { x, y: y + 7.5, "text-anchor": "middle", "font-size": 22 }, g).textContent = skin.emoji;
+    } else {
+      this.el("circle", { cx: x, cy: y, r: 17, fill: `url(#${this.id}-${color === "black" ? "gBlack" : "gWhite"})`, filter: `url(#${this.id}-shadow)`,
+                          ...(edge && color === "black" ? { stroke: edge, "stroke-width": 1.5 } : {}) }, g);
+    }
     if (this.numbers && num) {
       this.el("text", { x, y: y + 4, "text-anchor": "middle", class: "move-num", fill: color === "black" ? "#fff" : "#333" }, g).textContent = num;
     }
     this.markLast(r, c);
   }
-  removeStone(r, c) { const s = this.stones.querySelector(`[data-rc="${r},${c}"]`); if (s) s.remove(); }
+  removeStone(r, c) {
+    const s = this.stones.querySelector(`[data-rc="${r},${c}"]`); if (s) s.remove();
+    this.placed = this.placed.filter((p) => p.r !== r || p.c !== c);
+  }
   markLast(r, c) {
     this.overlay.querySelectorAll(".last-mark, .last-ring").forEach((e) => e.remove());
+    this.last = r === undefined ? null : [r, c];
     if (r === undefined) return;
     const [x, y] = this.xy(r, c);
     this.el("circle", { cx: x, cy: y, r: 21, class: "last-ring" }, this.overlay);
     if (!this.numbers) this.el("circle", { cx: x, cy: y, r: 4.5, class: "last-mark" }, this.overlay);
   }
   showWin(line) {
+    this.win = line;
     const [x1, y1] = this.xy(...line[0]), [x2, y2] = this.xy(...line[line.length - 1]);
     for (const [r, c] of line) { const [x, y] = this.xy(r, c); this.el("circle", { cx: x, cy: y, r: 20, class: "win-ring" }, this.overlay); }
     this.el("line", { x1, y1, x2, y2, class: "win-line" }, this.overlay);
@@ -270,6 +349,122 @@ class BoardView {
     });
   }
   clearHints() { this.overlay.querySelectorAll(".hint").forEach((e) => e.remove()); }
+  async think(list, step = 140, dice = false) {
+    // show the moves the AI compared: weaker options first, the chosen move last.
+    // dice = a random agent: it compares nothing, so the squares just bounce like a dice roll
+    this.clearThinking();
+    const layer = this.el("g", { class: "thinking-layer" }, this.overlay);
+    const order = list.map((m, i) => ({ ...m, rank: i + 1 })).reverse();
+    for (const m of order) {
+      if (!layer.isConnected) return;
+      const [x, y] = this.xy(m.row, m.col);
+      const g = this.el("g", { class: "think" + (m.rank === 1 ? " best" : "") + (dice ? " dice" : "") }, layer);
+      this.el("circle", { cx: x, cy: y, r: m.rank === 1 ? 18 : 15 }, g);
+      this.el("text", { x, y: y + 5, "text-anchor": "middle" }, g).textContent = m.rank === 1 ? "✓" : dice ? "?" : m.rank;
+      if (dice && m.rank !== 1) { await sleep(step); g.remove(); } else await sleep(m.rank === 1 ? 0 : step);
+    }
+    await sleep(list.length === 1 ? 700 : 420);
+  }
+  clearThinking() { this.overlay.querySelectorAll(".thinking-layer").forEach((e) => e.remove()); }
+  flashCoach(r, c, ms = 3500) {
+    // the coach points at a better square for a moment
+    this.overlay.querySelectorAll(".coach-mark").forEach((e) => e.remove());
+    const [x, y] = this.xy(r, c), g = this.el("g", { class: "coach-mark" }, this.overlay);
+    this.el("circle", { cx: x, cy: y, r: 17 }, g);
+    this.el("text", { x, y: y + 6, "text-anchor": "middle" }, g).textContent = "★";
+    setTimeout(() => g.remove(), ms);
+  }
+  marks(cells, cls, label = "") {
+    const g = this.el("g", { class: cls }, this.overlay);
+    cells.forEach(([r, c]) => {
+      const [x, y] = this.xy(r, c);
+      this.el("circle", { cx: x, cy: y, r: 17 }, g);
+      if (label) this.el("text", { x, y: y + 6, "text-anchor": "middle" }, g).textContent = label;
+    });
+    return g;
+  }
+}
+
+function paintPlayerStones() {
+  $("stoneBlack").innerHTML = `${stoneIcon("black")} Black`;
+  $("stoneWhite").innerHTML = `${stoneIcon("white")} White`;
+}
+function applyTheme(key) {
+  themeKey = THEMES[key] ? key : "wood";
+  store.set("gomoku-theme", themeKey);
+  [Game.view, Watch.view, Lab.heurView, Tutor.view].forEach((v) => v && v.redraw());
+  renderThemes(); paintPlayerStones();
+}
+function stoneIcon(color) {
+  // the small stone shown next to "Black"/"White" in the player cards, matching the theme
+  const skin = theme().stones && theme().stones[color];
+  return skin ? `<span class="mini skin" style="background:${skin.fill}">${skin.emoji}</span>` : `<i class="mini ${color}"></i>`;
+}
+function themePreview(t) {
+  const st = t.edge ? ` stroke="${t.edge}" stroke-width="1"` : "";
+  const gid = `tp-${t.name.replace(/\W/g, "")}`;
+  const stops = t.board.map((c, i) => `<stop offset="${i / (t.board.length - 1)}" stop-color="${c}"/>`).join("");
+  const stone = (x, y, color) => {
+    const skin = t.stones && t.stones[color];
+    return skin ? `<circle cx="${x}" cy="${y}" r="9" fill="${skin.fill}" stroke="#0003"/><text x="${x}" y="${y + 4}" font-size="11" text-anchor="middle">${skin.emoji}</text>`
+      : color === "black" ? `<circle cx="${x}" cy="${y}" r="8" fill="#1b1b1b"${st}/>` : `<circle cx="${x}" cy="${y}" r="8" fill="#f4f4f4" stroke="#bbb"/>`;
+  };
+  const decor = t.decor === "clouds"
+    ? `<ellipse cx="72" cy="80" rx="18" ry="8" fill="#fff" opacity=".85"/><ellipse cx="62" cy="76" rx="10" ry="7" fill="#fff" opacity=".85"/><ellipse cx="24" cy="18" rx="14" ry="6" fill="#fff" opacity=".85"/>`
+    : Array.isArray(t.decor) ? `<text x="80" y="88" font-size="14" opacity=".55" text-anchor="middle">${t.decor[0]}</text><text x="18" y="86" font-size="11" opacity=".5" text-anchor="middle">${t.decor[t.decor.length - 1]}</text>` : "";
+  let gridLines = "";
+  for (let i = 0; i < 5; i++) {
+    gridLines += `<line x1="12" y1="${12 + i * 19}" x2="88" y2="${12 + i * 19}" stroke="${t.line}" stroke-width="1.2" opacity=".8"/>`;
+    gridLines += `<line x1="${12 + i * 19}" y1="12" x2="${12 + i * 19}" y2="88" stroke="${t.line}" stroke-width="1.2" opacity=".8"/>`;
+  }
+  return `<svg viewBox="0 0 100 100"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient></defs>
+    <rect width="100" height="100" rx="14" fill="url(#${gid})"/>${decor}${gridLines}
+    ${stone(31, 31, "black")}${stone(50, 50, "black")}${stone(50, 31, "white")}${stone(69, 50, "white")}</svg>`;
+}
+function renderThemes() {
+  const tile = ([k, t]) => `
+    <button class="theme-tile ${k === themeKey ? "active" : ""}" data-theme="${k}" aria-pressed="${k === themeKey}">
+      ${themePreview(t)}<span>${t.icon} ${t.name}</span></button>`;
+  const all = Object.entries(THEMES);
+  $("themeGrid").innerHTML = `<h3 class="theme-group">🧸 Cute boards</h3>${all.filter(([, t]) => t.cute).map(tile).join("")}
+    <h3 class="theme-group">🎯 Classic boards</h3>${all.filter(([, t]) => !t.cute).map(tile).join("")}`;
+  document.querySelectorAll(".theme-name").forEach((e) => { e.textContent = `${theme().icon} ${theme().name}`; });
+}
+function openThemes() {
+  renderThemes();
+  const reopenPause = !$("pauseMenu").hidden;
+  $("pauseMenu").hidden = true; $("themeModal").hidden = false;
+  $("themeClose").onclick = () => { $("themeModal").hidden = true; if (reopenPause) $("pauseMenu").hidden = false; };
+}
+
+/* ------------------------------------------------------------------ AI thinking panel */
+function verdict(v) {
+  if (v >= 4e6) return "wins 🏆";
+  if (v >= 2e6) return "strong attack ⚡";
+  if (v <= -4e6) return "loses 💀";
+  if (v <= -2e6) return "dangerous ⚠️";
+  const a = Math.abs(v), t = a >= 1000 ? `${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : String(a);
+  return (v > 0 ? "+" : v < 0 ? "−" : "") + t;
+}
+function renderThoughts(s, level) {
+  const box = $("thoughts"), list = s.considered || [];
+  if (level === "Easy" || !list.length) {
+    box.innerHTML = `<h4>🔍 Moves I compared</h4><p class="small">🎲 None! I'm a random agent: I picked 1 of ${s.nodes.toLocaleString()} empty squares without comparing them. The "?" squares on the board are just my dice bouncing.</p>`;
+    return;
+  }
+  if (list.length === 1) {
+    box.innerHTML = `<h4>🔍 Moves I compared</h4><p class="small">✓ <b>${cellName(list[0].row, list[0].col)}</b> was the <b>only</b> sensible move (${escapeHtml(s.reason.toLowerCase())}), so I pruned every other square before searching.</p>`;
+    return;
+  }
+  const vals = list.map((m) => m.score), max = Math.max(...vals), min = Math.min(...vals);
+  const allSame = max === min;
+  box.innerHTML = `<h4>🔍 Moves I compared (best first)</h4>` + list.slice(0, 6).map((m, i) => `
+    <div class="thought ${i === 0 ? "chosen" : ""}">
+      <span class="t-rank">${i === 0 ? "✓" : i + 1}</span><span class="t-cell">${cellName(m.row, m.col)}</span>
+      <span class="t-bar"><i style="width:${allSame ? 50 : 12 + 88 * ((m.score - min) / (max - min))}%"></i></span>
+      <span class="t-val">${level === "Blind" && m.score === 0 ? "safe?" : verdict(m.score)}</span>
+    </div>`).join("") +
+    (level === "Blind" ? `<p class="small">🦇 Blind search only knows win or lose. ${allSame ? "Every square scored the same, so I can't tell them apart." : "Most squares look equal to me; I only see wins and losses."}</p>` : "");
 }
 
 /* ------------------------------------------------------------------ navigation */
@@ -286,6 +481,7 @@ function go(name) {
   if (name === "home") refreshContinue();
   if (name === "levels") renderLevels();
   if (name === "lab") Lab.open();
+  if (name === "scores") Scores.open();
   scrollTo({ top: 0, behavior: "smooth" });
 }
 document.addEventListener("click", (e) => {
@@ -342,6 +538,7 @@ const Game = {
     else if (this.human === "black") { black = you; white = op; } else { black = op; white = you; }
     $("avBlack").textContent = black.face; $("nameBlack").textContent = black.name;
     $("avWhite").textContent = white.face; $("nameWhite").textContent = white.name;
+    paintPlayerStones();
     $("brainPanel").style.display = this.mode === "friend" ? "none" : "";
     $("bubbleFace").textContent = op.face;
   },
@@ -357,7 +554,7 @@ const Game = {
   },
 
   say(text, thinking = false) {
-    $("bubbleText").innerHTML = thinking ? `Hmm, let me think<span class="dots"></span>` : text;
+    $("bubbleText").innerHTML = thinking ? `${text || "Hmm, let me think"}<span class="dots"></span>` : text;
     $("brainPanel").classList.toggle("thinking", thinking);
   },
 
@@ -443,7 +640,9 @@ const Game = {
     if (this.paused) { toast("The game is paused. Press ▶️ Resume."); return; }
     if (!this.isHumanTurn()) { if (this.busy) toast("Wait, the computer is thinking! 🤔"); return; }
     if (this.board[r][c]) { Sound.oops(); return; }
+    const before = this.board.map((row) => row.slice()), mover = this.turn;
     this.place(r, c, this.turn);
+    if ($("coachOn").checked) Coach.judge(before, mover, r, c, this.gen);
   },
 
   place(r, c, color, meta = {}) {
@@ -470,8 +669,20 @@ const Game = {
       await sleep(Math.max(0, 450 - (performance.now() - started)));  // let kids see the "thinking"
       while (this.paused && gen === this.gen) await sleep(150);       // hold the move while paused
       if (gen !== this.gen || this.over) return;
-      this.busy = false;
       const s = res.stats;
+      renderThoughts(s, this.level);
+      if ($("showThinking").checked && s.considered && s.considered.length) {
+        const n = Math.min(6, s.considered.length);
+        const msg = this.level === "Easy" ? "Eeny, meeny, miny, moe… 🎲"
+          : n === 1 ? `I looked at ${s.nodes.toLocaleString()} boards. Only one move makes sense here`
+          : `I looked at ${s.nodes.toLocaleString()} boards. Now comparing my ${n} best moves`;
+        this.say(msg, true);
+        await this.view.think(s.considered.slice(0, 6), n === 1 ? 0 : Math.max(90, 520 / n), this.level === "Easy");
+        while (this.paused && gen === this.gen) await sleep(150);
+        this.view.clearThinking();
+        if (gen !== this.gen || this.over) return;
+      }
+      this.busy = false;
       this.say(kid(s.reason));
       $("bsBoards").textContent = s.nodes.toLocaleString();
       $("bsDepth").textContent = s.depth || "1";
@@ -532,7 +743,8 @@ const Game = {
     if (this.mode === "ai") this.say(humanWon ? "Wow, you got me! 😲 Play again?" : winner === "draw" ? "A draw! Good game." : "Good game! 😊");
 
     $("modalFace").textContent = face; $("modalTitle").textContent = title; $("modalSub").textContent = sub;
-    $("modalStars").innerHTML = ""; $("modalReport").innerHTML = "<p>Looking at your game…</p>";
+    $("modalStars").innerHTML = ""; $("modalReport").innerHTML = "<p>The AI is grading your game…</p>";
+    $("modalRating").hidden = true; $("modalSmart").hidden = true;
     const isLevel = this.levelIdx !== null, nextIdx = isLevel ? this.levelIdx + 1 : null;
     $("nextLevelBtn").hidden = !(isLevel && humanWon && nextIdx < LEVELS.length);
     $("againBtn").textContent = isLevel && !humanWon ? "Try again" : "Play again";
@@ -548,9 +760,23 @@ const Game = {
       .catch((e) => console.error(e));
 
     const perspective = this.mode === "friend" ? (winner === "white" ? "white" : "black") : this.human;
+    const who = this.mode === "friend" ? (perspective === "black" ? "Player 1" : "Player 2") : "you";
+    const me = Player.get();
     try {
-      const a = await api("/api/analyze", { moves: this.moves, perspective, size: this.size });
-      this.renderReport(a, this.mode === "friend" ? (perspective === "black" ? "Player 1" : "Player 2") : "you");
+      let a, rating = null;
+      if (this.mode === "ai" && me) {
+        const r = await api("/api/result", {
+          player: me.name, avatar: me.avatar, level: this.level, human_color: this.human, winner,
+          moves: this.moves, size: this.size, duration_s: this.elapsed, mode: isLevel ? `level${this.levelIdx + 1}` : "quick",
+        });
+        a = r.analysis; rating = r.rating;
+        renderSmartNext(r.smart_match);
+        Player.cacheRating(rating);
+      } else {
+        a = await api("/api/analyze", { moves: this.moves, perspective, size: this.size });
+      }
+      this.renderReport(a, who);
+      renderGameRating(a, rating, who);
       if (isLevel && humanWon) Progress.complete(this.levelIdx, a.stars);
     } catch (err) {
       $("modalReport").innerHTML = "<p>Game analysis is not available right now.</p>"; console.error(err);
@@ -574,11 +800,198 @@ const Game = {
   },
 };
 
-function startGame(cfg) {
+/* ------------------------------------------------------------------ live coach */
+const Coach = {
+  async judge(board, color, r, c, gen) {
+    try {
+      const d = await api("/api/coach", { board, color, move: [r, c] });
+      if (gen !== Game.gen || currentScreen !== "game") return;
+      const icon = { great: "✅", good: "👍", warning: "⚠️", mistake: "❌" }[d.verdict];
+      const title = { great: "Great move!", good: "Good move.", warning: "Careful!", mistake: "Mistake!" }[d.verdict];
+      const who = Game.mode === "friend" ? `${color === "black" ? "Player 1" : "Player 2"} played ${cellName(r, c)}. ` : "";
+      const bar = $("coachBar");
+      bar.className = `coach-bar v-${d.verdict}`;
+      bar.innerHTML = `<span class="cb-icon">${icon}</span><div><b>🎓 Coach: ${title}</b> ${who}${escapeHtml(d.text)}${d.text.endsWith(".") || d.text.endsWith("!") ? "" : "."}
+        <small>Move quality ${d.quality}%${d.better_cell ? ` · ★ marks ${d.better_cell} on the board` : ""}</small></div>`;
+      bar.hidden = false;
+      if (d.better) Game.view.flashCoach(d.better[0], d.better[1]);
+    } catch (err) { console.error(err); }
+  },
+};
+
+async function smartMatch(size, first) {
+  if (!Player.get() && !Player.guest) await askPlayer();
+  const me = Player.get();
+  let d;
+  try { d = await api(`/api/smart-match${me ? `?player=${encodeURIComponent(me.name)}` : ""}`); }
+  catch (err) { toast("Couldn't reach the Python server."); return; }
+  const o = OPPONENTS[d.level];
+  toast(`🎯 Smart Match picked ${o.face} ${o.name}. ${d.why}`);
+  startGame({ mode: "ai", size: size || pickSize, level: d.level, first: first || firstMove });
+}
+
+async function startGame(cfg) {
+  if (cfg.mode === "ai" && !Player.get() && !Player.guest) await askPlayer();
   Game.setup(cfg);
+  $("coachBar").hidden = true;
   go("game");
   Game.begin();
 }
+
+/* ------------------------------------------------------------------ player, rating, scoreboard */
+const AVATARS = ["🙂", "😎", "🦄", "🐱", "🐶", "🐼", "🦁", "🐸", "🐧", "🚀", "⚽", "🌟"];
+const Player = {
+  guest: false,
+  get() { return store.get("gomoku-player", null); },
+  set(p) { store.set("gomoku-player", p); renderPlayerChip(); },
+  cacheRating(r) { const p = this.get(); if (p && r) { p.rating = r.rating_after; p.title = r.title; p.icon = r.icon; this.set(p); } },
+};
+function askPlayer() {
+  return new Promise((resolve) => {
+    const cur = Player.get();
+    let avatar = (cur && cur.avatar) || AVATARS[0];
+    $("playerName").value = cur ? cur.name : "";
+    const paint = () => { $("avatarPick").innerHTML = AVATARS.map((a) => `<button class="av ${a === avatar ? "active" : ""}" data-av="${a}" role="radio" aria-checked="${a === avatar}">${a}</button>`).join(""); };
+    paint();
+    $("avatarPick").onclick = (e) => { const b = e.target.closest("[data-av]"); if (b) { avatar = b.dataset.av; paint(); } };
+    $("playerModal").hidden = false; $("playerName").focus();
+    const done = async (save) => {
+      const name = $("playerName").value.trim();
+      if (save && !name) { toast("Please type your name 🙂"); $("playerName").focus(); return; }
+      $("playerModal").hidden = true;
+      if (save) {
+        Player.guest = false;
+        try {
+          const prof = await api("/api/player", { name, avatar });
+          Player.set({ name: prof.name, avatar: prof.avatar, rating: prof.rating, title: prof.title, icon: prof.icon });
+          toast(`Hi ${prof.name}! Your rating: ${prof.rating}`);
+        } catch (err) { Player.set({ name, avatar }); }
+      } else Player.guest = true;
+      resolve(Player.get());
+    };
+    $("playerSave").onclick = () => done(true);
+    $("playerSkip").onclick = () => done(false);
+    $("playerName").onkeydown = (e) => { if (e.key === "Enter") done(true); };
+  });
+}
+function renderPlayerChip() {
+  const p = Player.get();
+  $("playerChip").innerHTML = p
+    ? `Playing as <b>${p.avatar} ${escapeHtml(p.name)}</b>${p.rating ? ` · ${p.icon || "⭐"} ${p.rating} ${p.title || ""}` : ""} · <button class="link" id="chipChange">change</button>`
+    : `<button class="link" id="chipChange">✍️ Set your name to get a rating</button>`;
+  $("chipChange").onclick = () => askPlayer();
+}
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]); }
+
+function renderGameRating(a, r, who) {
+  const box = $("modalRating");
+  const gradeClass = a.grade.replace("+", "plus");
+  box.innerHTML = `
+    <div class="grade-big g-${gradeClass}" aria-label="Grade ${a.grade}">${a.grade}</div>
+    <div class="rating-body">
+      <b>🤖 The AI's rating of how ${who} played</b>
+      <div class="acc-bar" aria-label="Accuracy ${a.accuracy}%"><i style="width:${a.accuracy}%"></i></div>
+      <span>Accuracy <b>${a.accuracy}%</b> · ${a.grade_words}</span>
+      ${r ? `<div class="rating-line">Rating ${r.rating_before} → <b>${r.rating_after}</b>
+              <span class="${r.rating_change >= 0 ? "up" : "down"}">${r.rating_change >= 0 ? "+" : ""}${r.rating_change}</span>
+              · ${r.icon} ${r.title}</div>`
+          : guestRatingHint()}
+    </div>`;
+  box.hidden = false;
+}
+function guestRatingHint() {
+  return Game.mode === "ai" ? `<div class="rating-line small">Set your name on the home screen to save a rating and appear on the scoreboard.</div>` : "";
+}
+
+function renderSmartNext(sm) {
+  if (!sm || !sm.fuzzy) return;
+  const o = OPPONENTS[sm.level], same = sm.level === Game.level;
+  $("modalSmart").innerHTML = `
+    <div><b>🌫️ Fuzzy-logic coach</b> (your last ${sm.recent.games} game${sm.recent.games > 1 ? "s" : ""}):
+      skill <b>${Math.round(sm.fuzzy.skill)}/100 (${sm.fuzzy.skill_label})</b>, difficulty: <b>${sm.fuzzy.adjust_label}</b>.
+      <br>${same ? "Stay with" : "Next, try"} ${o.face} <b>${o.name}</b>.</div>
+    <button class="big-btn green" id="smartPlay">Play ${o.name.split(" ")[0]}</button>`;
+  $("modalSmart").hidden = false;
+  $("smartPlay").onclick = () => { $("modal").hidden = true; startGame({ mode: "ai", size: Game.size, level: sm.level, first: Game.human === "white" ? "ai" : "human" }); };
+}
+
+function ratingChart(values) {
+  if (values.length < 2) return `<p class="small">Play a game against a robot to start your rating chart.</p>`;
+  const W = 520, H = 180, P = 30;
+  let lo = Math.min(...values), hi = Math.max(...values);
+  if (hi - lo < 120) { const mid = (hi + lo) / 2; lo = mid - 60; hi = mid + 60; }  // keep axis labels apart
+  const min = lo - 20, max = hi + 20;
+  const x = (i) => P + (i * (W - 2 * P)) / (values.length - 1), y = (v) => H - P - ((v - min) * (H - 2 * P)) / (max - min);
+  const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const grid = [min + 20, Math.round((min + max) / 2), max - 20].map((v) =>
+    `<line x1="${P}" x2="${W - P}" y1="${y(v)}" y2="${y(v)}" class="chart-grid"/><text x="${P - 6}" y="${y(v) + 4}" text-anchor="end" class="chart-label">${Math.round(v)}</text>`).join("");
+  const dots = values.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === values.length - 1 ? 6 : 4}" class="chart-dot"><title>${i === 0 ? "Start" : "Game " + i}: ${v}</title></circle>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" class="rating-chart" role="img" aria-label="Rating over time, now ${values[values.length - 1]}">
+    ${grid}<polyline points="${pts}" class="chart-line"/>${dots}
+    <text x="${x(values.length - 1)}" y="${y(values[values.length - 1]) - 12}" text-anchor="end" class="chart-value">${values[values.length - 1]}</text></svg>`;
+}
+
+const Scores = {
+  async open() {
+    const me = Player.get();
+    let d;
+    try { d = await api(`/api/scoreboard${me ? `?player=${encodeURIComponent(me.name)}` : ""}`); }
+    catch (err) { $("scoresMain").innerHTML = `<div class="panel"><p>Couldn't reach the Python server. Is web_app.py running?</p></div>`; return; }
+    const p = d.player;
+    if (!p) {
+      $("scoresMain").innerHTML = `<div class="panel center-text"><div class="big-face">🏆</div><h3>No rating yet</h3>
+        <p>Set your name, then play any robot. The AI will grade every game and give you a rating.</p>
+        <button class="big-btn primary" id="scoreSetName">✍️ Set my name</button></div>`;
+      $("scoreSetName").onclick = async () => { await askPlayer(); Scores.open(); };
+    } else {
+      Player.set({ name: p.name, avatar: p.avatar, rating: p.rating, title: p.title, icon: p.icon });
+      const res = { win: "🏆 Won", loss: "❌ Lost", draw: "🤝 Draw" };
+      $("scoresMain").innerHTML = `
+        <div class="panel profile">
+          <div class="profile-face">${p.avatar}</div>
+          <div class="profile-info">
+            <h3>${escapeHtml(p.name)} <button class="link" id="switchPlayer">switch player</button>
+              <button class="link danger-link" id="deleteMe">🗑 delete my data</button></h3>
+            <div class="profile-rating"><b>${p.rating}</b> <span>${p.icon} ${p.title}${p.rank ? ` · rank #${p.rank}` : ""}</span></div>
+            <div class="profile-stats">
+              <span><b>${p.games}</b> games</span><span><b>${p.wins}</b> wins</span><span><b>${p.draws}</b> draws</span>
+              <span><b>${p.losses}</b> losses</span><span><b>${p.avg_accuracy ?? "–"}%</b> avg accuracy</span>
+              <span><b>${p.best_accuracy ?? "–"}%</b> best</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel"><h3>💡 What the AI noticed about you</h3>
+          <div class="insights">${(p.insights || []).map((i) => `<div class="insight"><span>${i.icon}</span><div><b>${escapeHtml(i.title)}</b><p>${escapeHtml(i.text)}</p></div></div>`).join("")}</div>
+        </div>
+        <div class="panel"><h3>📈 My rating over time</h3>${ratingChart(p.rating_history)}</div>
+        <div class="panel"><h3>🤖 My record against each robot</h3>
+          ${p.vs_robots.length ? `<table class="lab-table"><tr><th>Robot</th><th>Robot rating</th><th>Won</th><th>Draw</th><th>Lost</th></tr>
+            ${p.vs_robots.map((v) => `<tr><td>${OPPONENTS[v.opponent].face} ${v.name}</td><td>${v.robot_rating}</td><td>${v.win}</td><td>${v.draw}</td><td>${v.loss}</td></tr>`).join("")}</table>`
+            : `<p class="small">No games yet.</p>`}
+        </div>
+        <div class="panel"><h3>📜 My games (newest first)</h3>
+          ${p.history.length ? `<div class="table-scroll"><table class="lab-table history"><tr><th>Date</th><th>Robot</th><th>Board</th><th>Result</th><th>Accuracy</th><th>Grade</th><th>Rating</th></tr>
+            ${p.history.map((h) => `<tr><td>${h.played_at.slice(0, 16).replace("T", " ")}</td><td>${OPPONENTS[h.opponent].face} ${h.opponent_name}</td>
+              <td>${h.board_size}×${h.board_size}</td><td>${res[h.result]}</td><td>${h.accuracy}%</td><td><b>${h.grade}</b></td>
+              <td>${h.rating_after} <span class="${h.rating_change >= 0 ? "up" : "down"}">${h.rating_change >= 0 ? "+" : ""}${h.rating_change}</span></td></tr>`).join("")}
+          </table></div>` : `<p class="small">No games yet.</p>`}
+        </div>`;
+      $("switchPlayer").onclick = async () => { await askPlayer(); Scores.open(); };
+      $("deleteMe").onclick = async () => {
+        if (!(await confirmBox("Delete my data?", `This permanently removes ${p.name}'s rating and all ${p.games} recorded games from this computer.`))) return;
+        await fetch(`/api/player?name=${encodeURIComponent(p.name)}`, { method: "DELETE" });
+        store.del("gomoku-player"); renderPlayerChip(); toast("Your data was deleted."); Scores.open();
+      };
+    }
+    $("leaderboard").innerHTML = d.leaderboard.length ? d.leaderboard.map((r) => `
+      <div class="lb-row ${me && r.name.toLowerCase() === me.name.toLowerCase() ? "me" : ""}">
+        <span class="lb-rank">${r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}</span>
+        <span class="lb-name">${r.avatar} ${escapeHtml(r.name)}<small>${r.icon} ${r.title} · ${r.games} games</small></span>
+        <b class="lb-rating">${r.rating}</b>
+      </div>`).join("") : `<p class="small">Nobody has a rating yet. Be the first!</p>`;
+    $("robotRatings").innerHTML = d.robots.map((r) => `<div><span>${OPPONENTS[r.level].face} ${r.name}</span><b>${r.rating}</b></div>`).join("");
+  },
+};
 
 /* ------------------------------------------------------------------ continue */
 function refreshContinue() {
@@ -650,6 +1063,12 @@ function buildPicker() {
       <div class="op-tech">🧠 ${o.tech}</div>
       <button class="big-btn primary" data-level="${lvl}">Play ${o.name.split(" ")[0]}</button>
     </div>`).join("");
+  $("smartBtn").onclick = () => smartMatch(pickSize, firstMove);
+  document.querySelectorAll("[data-practice]").forEach((b) => b.addEventListener("click", () => {
+    $("coachOn").checked = true; store.set("gomoku-coach", true);
+    if (b.dataset.practice === "smart") smartMatch(9, "human");
+    else startGame({ mode: "ai", size: 9, level: b.dataset.practice, first: "human" });
+  }));
   wrap.addEventListener("click", (e) => {
     const b = e.target.closest("[data-level]");
     if (b) startGame({ mode: "ai", size: pickSize, level: b.dataset.level, first: firstMove });
@@ -780,6 +1199,8 @@ const Watch = {
 };
 
 /* ------------------------------------------------------------------ AI Lab */
+const FUZZY_ORDER = { accuracy: ["low", "medium", "high"], mistakes: ["few", "some", "many"], results: ["losing", "even", "winning"] };
+
 const Lab = {
   agents: null, heurView: null, heurBoard: emptyBoard(9), heurColor: "black",
 
@@ -861,11 +1282,91 @@ const Lab = {
         <tr><th>Total points</th><td></td><th>${d.black_points.toLocaleString()}</th><th>${d.white_points.toLocaleString()}</th></tr></table>`;
     } catch (err) { $("heurVerdict").textContent = "Couldn't reach the Python server."; }
   },
+  async formulation() {
+    let board, color, src;
+    if (Game.inProgress()) { board = Game.board; color = Game.turn; src = `Filled in live from your current game (${Game.size}×${Game.size}, move ${Game.moves.length}).`; }
+    else {
+      board = this.sampleBoard(15); color = "white";
+      src = "Filled in from a sample 15×15 position. Start a game and come back to see your own board here.";
+    }
+    $("formSource").textContent = src;
+    try {
+      const d = await api("/api/formulation", { board, color });
+      $("formTable").innerHTML = d.components.map((c) => `<tr><th>${c.name}</th><td>${escapeHtml(c.text)}</td></tr>`).join("");
+      const big = (n) => n.toLocaleString();
+      $("formNumbers").innerHTML = `
+        <div><b>${d.size}×${d.size}</b><span>board</span></div>
+        <div><b>${d.empty}</b><span>legal actions now</span></div>
+        <div><b>${d.candidates}</b><span>candidates the AI keeps</span></div>
+        <div><b>≈ 10<sup>${d.state_space_digits}</sup></b><span>possible boards (upper bound)</span></div>
+        <div><b>${big(d.tree_depth3_uninformed)}</b><span>boards 3 moves ahead, uninformed</span></div>
+        <div><b>${big(d.tree_depth3_informed)}</b><span>boards 3 moves ahead, with candidates</span></div>`;
+    } catch (err) { $("formTable").innerHTML = "<tr><td>Couldn't reach the Python server.</td></tr>"; }
+  },
+  fuzzyTimer: null,
+  fuzzyInit() {
+    const upd = () => {
+      $("fzAccV").textContent = `${$("fzAcc").value}%`; $("fzMisV").textContent = $("fzMis").value; $("fzResV").textContent = `${$("fzRes").value}%`;
+      clearTimeout(this.fuzzyTimer); this.fuzzyTimer = setTimeout(() => this.fuzzy(), 120);
+    };
+    ["fzAcc", "fzMis", "fzRes"].forEach((id) => $(id).addEventListener("input", upd));
+    $("fzMine").onclick = async () => {
+      const me = Player.get();
+      if (!me) return;
+      const d = await api(`/api/smart-match?player=${encodeURIComponent(me.name)}`);
+      if (!d.recent) { toast("Play a game against a robot first."); return; }
+      $("fzAcc").value = Math.round(d.recent.accuracy); $("fzMis").value = Math.min(10, Math.round(d.recent.mistakes * 2) / 2);
+      $("fzRes").value = Math.round(d.recent.results * 100); upd();
+    };
+  },
+  fuzzyChart(curve, crisp, lo, hi, labels) {
+    const W = 320, H = 120, P = 10, x = (v) => P + ((v - lo) / (hi - lo)) * (W - 2 * P), y = (v) => H - 22 - v * (H - 40);
+    const area = `M${x(curve[0][0])},${y(0)} ` + curve.map(([vx, vy]) => `L${x(vx).toFixed(1)},${y(vy).toFixed(1)}`).join(" ") + ` L${x(curve[curve.length - 1][0])},${y(0)} Z`;
+    const ticks = labels.map(([v, t]) => `<text x="${x(v)}" y="${H - 6}" text-anchor="middle" class="chart-label">${t}</text>`).join("");
+    return `<svg viewBox="0 0 ${W} ${H}" class="fz-chart"><line x1="${P}" x2="${W - P}" y1="${y(0)}" y2="${y(0)}" class="chart-grid"/>
+      <path d="${area}" class="fz-area"/><line x1="${x(crisp)}" x2="${x(crisp)}" y1="${y(1.05)}" y2="${y(0)}" class="fz-crisp"/>
+      <text x="${x(crisp)}" y="${y(1.05) - 2}" text-anchor="middle" class="chart-value">${crisp}</text>${ticks}</svg>`;
+  },
+  async fuzzy() {
+    const body = { accuracy: +$("fzAcc").value, mistakes: +$("fzMis").value, results: +$("fzRes").value / 100 };
+    let d;
+    try { d = await api("/api/fuzzy", body); } catch (err) { $("fzOut").textContent = "Couldn't reach the Python server."; return; }
+    const names = { accuracy: "Accuracy", mistakes: "Mistakes", results: "Results" };
+    $("fzMemb").innerHTML = Object.entries(d.memberships).map(([v, sets]) => `
+      <div class="fz-var"><b>${names[v]} = ${v === "results" ? Math.round(d.inputs[v] * 100) + "%" : d.inputs[v]}</b>
+        ${(FUZZY_ORDER[v] || Object.keys(sets)).map((k) => [k, sets[k]]).map(([k, m]) => `<div class="fz-row"><span>${k}</span><span class="t-bar"><i style="width:${m * 100}%"></i></span><span class="t-val">${m.toFixed(2)}</span></div>`).join("")}
+      </div>`).join("");
+    $("fzRules").innerHTML = d.rules.map((r) => `
+      <div class="fz-rule ${r.strength > 0 ? "on" : ""}"><span>${escapeHtml(r.rule)}</span>
+        <span class="t-bar"><i style="width:${r.strength * 100}%"></i></span><span class="t-val">${r.strength.toFixed(2)}</span></div>`).join("");
+    const rec = d.adjust > 0.3 ? "a stronger robot" : d.adjust < -0.3 ? "an easier robot" : "a robot of the same strength";
+    $("fzOut").innerHTML = `
+      <p><b>Skill = ${d.skill.toFixed(1)} / 100 → ${d.skill_label}</b></p>
+      ${this.fuzzyChart(d.skill_curve, Math.round(d.skill), 0, 100, [[10, "beginner"], [50, "intermediate"], [90, "advanced"]])}
+      <p><b>Difficulty change = ${d.adjust.toFixed(2)} → ${d.adjust_label}</b></p>
+      ${this.fuzzyChart(d.adjust_curve, +d.adjust.toFixed(2), -1, 1, [[-0.8, "easier"], [0, "same"], [0.8, "harder"]])}
+      <p class="small">Smart Match would now pick <b>${rec}</b>. The shaded shape is the aggregated output, and the line is its centroid.</p>`;
+    $("fzMine").hidden = !Player.get();
+  },
+  async fairness() {
+    $("fairRun").disabled = true; $("fairOut").innerHTML = "<p>Foxy is playing Foxy 10 times… (about 10 seconds)</p>";
+    try {
+      const d = await api("/api/fairness?games=10");
+      const bar = (label, n, cls) => `<div class="bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill ${cls}" style="width:${(n / d.games) * 100}%"></div></div><div class="bar-val">${n} of ${d.games}</div></div>`;
+      $("fairOut").innerHTML = bar("⚫ Black wins", d.black, "un") + bar("⚪ White wins", d.white, "in") + bar("🤝 Draws", d.draw, "") +
+        `<p><b>${d.conclusion}</b> That's why the project swaps colours and adjusts ratings for colour.</p>`;
+    } catch (err) { $("fairOut").textContent = "Couldn't reach the Python server."; }
+    $("fairRun").disabled = false;
+  },
   init() {
     document.querySelectorAll(".lab-tab").forEach((t) => t.addEventListener("click", () => {
       document.querySelectorAll(".lab-tab").forEach((x) => x.classList.toggle("active", x === t));
       document.querySelectorAll(".lab-panel").forEach((p) => p.classList.toggle("active", p.id === "lab-" + t.dataset.lab));
+      if (t.dataset.lab === "form") this.formulation();
+      if (t.dataset.lab === "fuzzy") this.fuzzy();
     }));
+    this.fuzzyInit();
+    $("fairRun").onclick = () => this.fairness();
     $("cmpRun").onclick = () => this.compare();
     $("spaceRun").onclick = () => this.space();
     this.heurView = new BoardView($("heurBoard"), { size: 9, coords: false, onClick: (r, c) => this.heurClick(r, c) });
@@ -878,6 +1379,113 @@ const Lab = {
     // a small example position to start with
     [[4, 3, "black"], [4, 4, "black"], [4, 5, "black"], [3, 4, "white"], [5, 5, "white"]].forEach(([r, c, v]) => { this.heurBoard[r][c] = v; });
     this.heurRender();
+  },
+};
+
+/* ------------------------------------------------------------------ AI tutor */
+const LESSONS = [
+  { kind: "win", seed: 3, title: "Finish the job", idea: "When you have four in a row with an empty end, play there and win. <b>Always check this first!</b>" },
+  { kind: "block", seed: 3, title: "Block the four", idea: "If your opponent has four in a row, you <b>must</b> block the empty end, or you lose on the next move." },
+  { kind: "open_three", seed: 3, title: "Stop the open three", idea: "Three in a row with space on <b>both</b> sides turns into an open four, which can't be stopped. Block one end now." },
+  { kind: "open_four", seed: 3, title: "The open four", idea: "Four in a row with <b>both ends empty</b>: your opponent can block only one end, so you win next move." },
+  { kind: "fork", seed: 3, title: "The double attack", idea: "Make <b>two threats with one stone</b>. Your opponent can stop only one of them." },
+];
+const PUZZLE_TYPES = { win: "🏁 Win now", block: "🧱 Block", open_three: "👀 Stop open three", open_four: "⚡ Open four", fork: "🍴 Double attack" };
+
+const Tutor = {
+  view: null, mode: "lessons", idx: 0, kind: "win", p: null, done: false,
+  solved: store.get("gomoku-tutor", { lessons: {}, puzzles: 0 }),
+  init() {
+    this.view = new BoardView($("tutorBoard"), { size: 9, onClick: (r, c) => this.click(r, c) });
+    this.view.canHover = (r, c) => this.p && !this.done && !this.p.board[r][c];
+    document.querySelectorAll(".learn-tab").forEach((t) => t.addEventListener("click", () => this.tab(t.dataset.learn)));
+    $("tutorHint").onclick = () => this.hint();
+    $("tutorShow").onclick = () => this.show();
+    $("tutorNext").onclick = () => this.next();
+    $("tutorList").onclick = (e) => {
+      const b = e.target.closest("[data-item]");
+      if (!b) return;
+      if (this.mode === "lessons") this.loadLesson(+b.dataset.item); else this.loadPuzzle(b.dataset.item);
+    };
+  },
+  tab(name) {
+    document.querySelectorAll(".learn-tab").forEach((x) => x.classList.toggle("active", x.dataset.learn === name));
+    $("learn-rules").hidden = name !== "rules";
+    $("learn-practice").hidden = name !== "practice";
+    $("learn-tutor").hidden = !(name === "lessons" || name === "puzzles");
+    if (name === "lessons") { this.mode = "lessons"; this.loadLesson(this.idx); }
+    if (name === "puzzles") { this.mode = "puzzles"; this.loadPuzzle(this.kind); }
+  },
+  renderList() {
+    $("tutorListTitle").textContent = this.mode === "lessons" ? "🧑‍🏫 Lessons" : "🧩 New puzzle from the AI";
+    $("tutorList").innerHTML = this.mode === "lessons"
+      ? LESSONS.map((l, i) => `<button class="tutor-item ${i === this.idx ? "active" : ""}" data-item="${i}">
+          <span>${this.solved.lessons[i] ? "✅" : i + 1}</span>${l.title}</button>`).join("")
+      : Object.entries(PUZZLE_TYPES).map(([k, t]) => `<button class="tutor-item ${k === this.kind ? "active" : ""}" data-item="${k}"><span>🎲</span>${t}</button>`).join("")
+        + `<p class="small">Every click makes a brand-new puzzle: two robots play until the AI finds a position worth learning from.</p>`;
+    $("tutorScore").textContent = `Lessons done: ${Object.keys(this.solved.lessons).length} / ${LESSONS.length} · AI puzzles solved: ${this.solved.puzzles}`;
+  },
+  async fetch(url) {
+    this.done = false; this.p = null;
+    $("tutorSay").innerHTML = this.mode === "puzzles" ? `The AI is inventing a puzzle for you<span class="dots"></span>` : "Loading the lesson…";
+    try { this.p = await api(url); } catch (err) { $("tutorSay").textContent = "Couldn't reach the Python server. Is web_app.py running?"; return false; }
+    this.view.setSize(this.p.size); this.view.hoverColor = this.p.color;
+    this.p.board.forEach((row, r) => row.forEach((v, c) => { if (v) this.view.addStone(r, c, v, 0, false); }));
+    this.view.markLast();
+    $("tutorTurn").innerHTML = `You play <span class="mini ${this.p.color}"></span> <b>${this.p.color}</b>. Click the right square.`;
+    return true;
+  },
+  async loadLesson(i) {
+    this.idx = i; this.renderList();
+    const L = LESSONS[i];
+    if (!(await this.fetch(`/api/puzzle?kind=${L.kind}&size=9&seed=${L.seed}`))) return;
+    $("tutorSay").innerHTML = `<b>Lesson ${i + 1}: ${L.title}.</b> ${this.p.task}`;
+    $("tutorIdea").innerHTML = `💡 ${L.idea}`;
+  },
+  async loadPuzzle(kind) {
+    this.kind = kind; this.renderList();
+    if (!(await this.fetch(`/api/puzzle?kind=${kind}&size=9`))) return;
+    $("tutorSay").innerHTML = `<b>${PUZZLE_TYPES[kind]}</b>: ${this.p.task}`;
+    $("tutorIdea").innerHTML = `🤖 This puzzle was made by the AI just now from a robot-vs-robot game.`;
+  },
+  async click(r, c) {
+    if (!this.p || this.done) return;
+    if (this.p.board[r][c]) { Sound.oops(); return; }
+    let d;
+    try { d = await api("/api/check", { board: this.p.board, color: this.p.color, kind: this.p.kind, move: [r, c] }); }
+    catch (err) { return; }
+    if (d.correct) {
+      this.done = true;
+      this.view.addStone(r, c, this.p.color);
+      this.view.marks([[r, c]], "good-mark", "✓");
+      $("tutorSay").innerHTML = `✅ <b>${escapeHtml(d.message)}</b>`;
+      Sound.win();
+      if (this.mode === "lessons") this.solved.lessons[this.idx] = true; else this.solved.puzzles++;
+      store.set("gomoku-tutor", this.solved); this.renderList();
+      if (this.mode === "lessons" && Object.keys(this.solved.lessons).length === LESSONS.length) confetti();
+    } else {
+      Sound.oops();
+      const g = this.view.marks([[r, c]], "bad-mark", "✗");
+      setTimeout(() => g.remove(), 1500);
+      $("tutorSay").innerHTML = `❌ ${escapeHtml(d.message.replace(/ The answers? (is|are) .*$/, ""))} Try again, or ask for a hint.`;
+    }
+  },
+  hint() {
+    if (!this.p) return;
+    const [r, c] = this.p.answers[0];
+    const g = this.view.marks([[r - (r > 0 ? 1 : 0), c]], "hint-area");
+    $("tutorSay").innerHTML = `💡 Look near row ${r + 1}, around column ${String.fromCharCode(65 + c)}. ${this.p.task}`;
+    setTimeout(() => g.remove(), 2500);
+  },
+  show() {
+    if (!this.p) return;
+    this.done = true;
+    this.view.marks(this.p.answers, "good-mark", "✓");
+    $("tutorSay").innerHTML = `👀 The answer: <b>${this.p.answers.map(([r, c]) => cellName(r, c)).join(", ")}</b>. ${this.p.task}`;
+  },
+  next() {
+    if (this.mode === "lessons") this.loadLesson((this.idx + 1) % LESSONS.length);
+    else this.loadPuzzle(this.kind);
   },
 };
 
@@ -915,6 +1523,14 @@ function buildHero() {
 
 /* ------------------------------------------------------------------ start up */
 $("soundBtn").onclick = () => setSound(!Sound.on);
+$("themeBtn").onclick = () => openThemes();
+document.querySelectorAll("[data-open-themes]").forEach((b) => { b.onclick = () => openThemes(); });
+$("pThemeBtn").onclick = () => openThemes();
+$("themeGrid").onclick = (e) => { const b = e.target.closest("[data-theme]"); if (b) { applyTheme(b.dataset.theme); Sound.click(); } };
+$("showThinking").checked = store.get("gomoku-show-thinking", true);
+$("coachOn").checked = store.get("gomoku-coach", true);
+$("coachOn").onchange = () => { store.set("gomoku-coach", $("coachOn").checked); if (!$("coachOn").checked) $("coachBar").hidden = true; };
+$("showThinking").onchange = () => store.set("gomoku-show-thinking", $("showThinking").checked);
 $("pSoundBtn").onclick = () => setSound(!Sound.on);
 setSound(Sound.on);
 
@@ -947,6 +1563,8 @@ $("menuBtn").onclick = () => go(Game.levelIdx !== null ? "levels" : "home");
 document.addEventListener("keydown", (e) => {
   if (e.target.matches("input, select, textarea")) return;
   if (!$("confirm").hidden) { if (e.key === "Escape") $("confirmNo").click(); return; }
+  if (!$("themeModal").hidden) { if (e.key === "Escape") $("themeClose").click(); return; }
+  if (!$("playerModal").hidden) return;
   if (e.key === "Escape" && !$("modal").hidden) { $("modal").hidden = true; return; }
   if (currentScreen !== "game") return;
   const k = e.key.toLowerCase();
@@ -959,5 +1577,5 @@ document.addEventListener("keydown", (e) => {
 addEventListener("beforeunload", () => Game.save());
 document.addEventListener("visibilitychange", () => { if (document.hidden) Game.save(); });
 
-buildPicker(); buildLearn(); buildHero(); Watch.init(); Lab.init(); Lab.loadAgents();
+buildPicker(); buildLearn(); buildHero(); Watch.init(); Lab.init(); Lab.loadAgents(); Tutor.init(); renderPlayerChip(); renderThemes();
 refreshContinue();

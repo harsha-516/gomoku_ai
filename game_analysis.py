@@ -43,6 +43,41 @@ TIPS = {
 }
 
 
+GRADES = ((90, "A+", "Outstanding"), (80, "A", "Excellent"), (65, "B", "Good"),
+          (50, "C", "Fair"), (0, "D", "Keep practising"))
+
+
+def grade_for(accuracy: float):
+    for limit, grade, words in GRADES:
+        if accuracy >= limit:
+            return grade, words
+    return GRADES[-1][1:]
+
+
+def move_quality(state, r: int, c: int, mover: str) -> float:
+    """How good one move was, from 0.0 to 1.0, judged by the AI.
+
+    Forced situations are judged strictly (a missed win or a missed block
+    scores 0); otherwise the move's attack + defence value is compared with
+    the best value available on the board at that moment.
+    """
+    opp = other(mover)
+    cands = candidate_cells(state)
+    if (r, c) not in cands:
+        cands = cands + [(r, c)]
+    wins = [x for x in cands if makes_five(state, x[0], x[1], mover)]
+    if wins:
+        return 1.0 if (r, c) in wins else 0.0
+    blocks = [x for x in cands if makes_five(state, x[0], x[1], opp)]
+    if blocks:
+        return 1.0 if (r, c) in blocks else 0.0
+    scores = {x: move_score(state, x[0], x[1], mover) for x in cands}
+    best, worst = max(scores.values()), min(scores.values())
+    if best - worst <= 0:
+        return 1.0
+    return max(0.0, min(1.0, (scores[(r, c)] - worst) / (best - worst)))
+
+
 def _cell(r: int, c: int) -> str:
     return f"{chr(65 + c)}{r + 1}"
 
@@ -51,6 +86,7 @@ def analyze_game(moves: List[Dict], perspective: str, size: int = 15) -> Dict:
     """Analyse ``moves`` (dicts with player, row, col) for ``perspective``."""
     state = empty_board(size)
     events: List[Dict] = []
+    qualities: List[float] = []
     opp = other(perspective)
 
     for i, m in enumerate(moves, start=1):
@@ -59,6 +95,7 @@ def analyze_game(moves: List[Dict], perspective: str, size: int = 15) -> Dict:
             raise ValueError(f"move {i} plays on an occupied cell {_cell(r, c)}")
 
         if mover == perspective:
+            qualities.append(move_quality(state, r, c, mover))
             cands = candidate_cells(state)
             wins = [x for x in cands if makes_five(state, x[0], x[1], mover)]
             fives = [x for x in cands if makes_five(state, x[0], x[1], opp)]
@@ -112,7 +149,16 @@ def analyze_game(moves: List[Dict], perspective: str, size: int = 15) -> Dict:
     my_moves = sum(1 for m in moves if m["player"] == perspective)
     worst = max(mistakes, key=mistakes.get) if total_mistakes else None
     stars = 3 if total_mistakes == 0 else (2 if total_mistakes <= max(1, my_moves // 8) else 1)
+    # accuracy: average move quality, minus a penalty for each serious mistake
+    accuracy = 100 * sum(qualities) / len(qualities) if qualities else 0.0
+    accuracy = max(0.0, accuracy - 5 * (mistakes["missed_win"] + mistakes["missed_block"]))
+    grade, grade_words = grade_for(accuracy)
+    # stars never contradict the grade: A/A+ allow 3, B/C allow 2, D allows 1
+    stars = min(stars, {"A+": 3, "A": 3, "B": 2, "C": 2}.get(grade, 1))
     return {
+        "accuracy": round(accuracy, 1),
+        "grade": grade,
+        "grade_words": grade_words,
         "perspective": perspective,
         "moves": len(moves),
         "your_moves": my_moves,

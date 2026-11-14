@@ -25,7 +25,9 @@
       <button data-go="friend">👫 Friend</button>
       <button data-go="watch">⚔️ Robot Battle</button>
       <button data-go="lab">🧠 AI Lab</button>
-      <button data-go="learn">📖 How to Play</button>
+      <button data-go="scores">🏆 Scoreboard</button>
+      <button data-go="learn">🎓 Learn</button>
+      <button id="themeBtn" class="icon-btn" aria-label="Board theme" title="Board theme">🎨</button>
       <button id="soundBtn" class="icon-btn" aria-label="Toggle sound" title="Sound">🔊</button>
     </nav>
   </header>
@@ -43,8 +45,10 @@
             <button class="big-btn green" data-go="pick">🎮 Quick Play</button>
             <button class="big-btn purple" data-go="watch">⚔️ Robot Battle</button>
             <button class="big-btn ghost" data-go="lab">🧠 AI Lab</button>
+            <button class="big-btn ghost" data-open-themes>🎨 Board themes</button>
           </div>
           <p class="continue-info" id="continueInfo" hidden></p>
+          <div class="player-chip" id="playerChip"></div>
         </div>
         <div class="hero-art" aria-hidden="true">
           <svg viewBox="0 0 220 220" class="hero-board"></svg>
@@ -85,8 +89,18 @@
             <button class="seg-btn" data-first="ai" role="radio" aria-checked="false">⚪ Computer</button>
           </div>
         </div>
+        <div class="setup-item">
+          <span>Board</span>
+          <button class="seg-btn theme-pick" data-open-themes><span class="theme-name">🪵 Classic Wood</span> · change 🎨</button>
+        </div>
       </div>
       <h3 class="pick-title">Choose your opponent</h3>
+      <div class="smart-card" id="smartCard">
+        <span class="smart-face">🎯</span>
+        <div><b>Smart Match: let the AI pick your opponent</b>
+          <p>Fuzzy logic looks at your recent accuracy, mistakes and results, and chooses a robot that is just right for you: not too easy, not too hard.</p></div>
+        <button class="big-btn orange" id="smartBtn">Pick for me</button>
+      </div>
       <div class="cards" id="opponentCards"></div>
     </section>
 
@@ -96,18 +110,19 @@
         <button class="bar-btn" id="backBtn" aria-label="Back to menu">← Back</button>
         <div class="game-title" id="gameTitle">Quick Play</div>
         <div class="timer" id="timer" aria-label="Game time">⏱ 00:00</div>
+        <button class="bar-btn theme-btn" data-open-themes aria-label="Change board theme">🎨 Theme</button>
         <button class="bar-btn pause" id="pauseBtn" aria-label="Pause">⏸ Pause</button>
       </div>
       <div class="game-layout">
         <aside class="panel players">
           <div class="player-card" id="pcBlack">
             <div class="avatar" id="avBlack">🙂</div>
-            <div><div class="pname" id="nameBlack">You</div><div class="pcolor"><i class="mini black"></i> Black</div></div>
+            <div><div class="pname" id="nameBlack">You</div><div class="pcolor" id="stoneBlack"><i class="mini black"></i> Black</div></div>
           </div>
           <div class="vs">VS</div>
           <div class="player-card" id="pcWhite">
             <div class="avatar" id="avWhite">🦊</div>
-            <div><div class="pname" id="nameWhite">Foxy</div><div class="pcolor"><i class="mini white"></i> White</div></div>
+            <div><div class="pname" id="nameWhite">Foxy</div><div class="pcolor" id="stoneWhite"><i class="mini white"></i> White</div></div>
           </div>
           <div class="turn-banner" id="turnBanner">Your turn!</div>
           <div class="controls">
@@ -115,6 +130,7 @@
             <button class="ctl" id="undoBtn">↩️ Undo</button>
             <button class="ctl" id="newBtn">🔄 Restart</button>
           </div>
+          <label class="check coach-toggle"><input type="checkbox" id="coachOn" checked> 🎓 Coach me after every move</label>
         </aside>
 
         <div class="board-wrap">
@@ -123,6 +139,7 @@
             <div class="paused-cover" id="pausedCover" hidden>⏸</div>
           </div>
           <div class="move-count" id="moveCount">Move 0</div>
+          <div class="coach-bar" id="coachBar" hidden></div>
         </div>
 
         <aside class="panel brain" id="brainPanel">
@@ -137,6 +154,8 @@
             <li><b id="bsTime">–</b><span>thinking time</span></li>
           </ul>
           <div class="agent-tags" id="agentTags"></div>
+          <div class="thoughts" id="thoughts"></div>
+          <label class="check small-check"><input type="checkbox" id="showThinking" checked> Show the AI's thinking on the board</label>
           <p class="tech" id="bsTech">The AI's search statistics appear here after each move.</p>
         </aside>
       </div>
@@ -199,9 +218,12 @@
         <button class="lab-tab active" data-lab="agent" role="tab">🤖 Agent</button>
         <button class="lab-tab" data-lab="env" role="tab">🌍 Environment</button>
         <button class="lab-tab" data-lab="types" role="tab">🧩 Agent types</button>
+        <button class="lab-tab" data-lab="form" role="tab">📐 Problem formulation</button>
         <button class="lab-tab" data-lab="search" role="tab">🔎 Search</button>
         <button class="lab-tab" data-lab="space" role="tab">📈 States vs size</button>
         <button class="lab-tab" data-lab="heur" role="tab">⚖️ Heuristic</button>
+        <button class="lab-tab" data-lab="fuzzy" role="tab">🌫️ Fuzzy logic</button>
+        <button class="lab-tab" data-lab="ethics" role="tab">🤝 Fairness &amp; ethics</button>
       </div>
 
       <div class="lab-panel active" id="lab-agent">
@@ -305,17 +327,141 @@
           </div>
         </div>
       </div>
+
+      <div class="lab-panel" id="lab-form">
+        <div class="panel">
+          <h3>Gomoku as a state-space search problem</h3>
+          <p id="formSource" class="small"></p>
+          <table class="lab-table" id="formTable"><tr><td>Loading…</td></tr></table>
+          <div class="form-numbers" id="formNumbers"></div>
+        </div>
+      </div>
+
+      <div class="lab-panel" id="lab-fuzzy">
+        <div class="panel">
+          <h3>Fuzzy logic: how the AI judges your skill and picks your next opponent</h3>
+          <p>Real performance is fuzzy: 72% accuracy is a bit "medium" <i>and</i> a bit "high". A <b>Mamdani fuzzy inference system</b> turns your numbers into degrees of membership, applies IF-THEN rules (AND = min, OR = max), and turns the result back into one number (centroid). Move the sliders:</p>
+          <div class="fz-sliders">
+            <label>Accuracy <b id="fzAccV">70%</b><input type="range" id="fzAcc" min="0" max="100" value="70"></label>
+            <label>Mistakes per 10 moves <b id="fzMisV">1.5</b><input type="range" id="fzMis" min="0" max="10" step="0.5" value="1.5"></label>
+            <label>Recent results (share of games won) <b id="fzResV">50%</b><input type="range" id="fzRes" min="0" max="100" value="50"></label>
+          </div>
+          <button class="link" id="fzMine" hidden>Use my real numbers</button>
+        </div>
+        <div class="lab-two">
+          <div class="panel"><h3>① Fuzzification</h3><div id="fzMemb"></div></div>
+          <div class="panel"><h3>④ Defuzzified result</h3><div id="fzOut"></div></div>
+        </div>
+        <div class="panel"><h3>② Rules and ③ aggregation (strength of each rule)</h3><div id="fzRules"></div></div>
+      </div>
+
+      <div class="lab-panel" id="lab-ethics">
+        <div class="ethics-grid">
+          <div class="panel">
+            <h3>⚖️ Bias: the first-move advantage</h3>
+            <p>In Gomoku, the player who moves first (Black) has a real advantage. Our measurements: with the same robot on both sides, <b>Black won 11 of 12</b> Owl-vs-Owl games and <b>17 vs 14</b> Foxy-vs-Foxy games. Check it yourself:</p>
+            <button class="ctl primary" id="fairRun">▶️ Run a live bias test</button>
+            <div id="fairOut" class="fair-out"></div>
+          </div>
+          <div class="panel">
+            <h3>✅ How the project keeps things fair</h3>
+            <ul class="ethics-list">
+              <li><b>Fair rating:</b> when you play White, the robot counts as 100 rating points stronger, so you are never punished for the colour you got.</li>
+              <li><b>Fair robot comparisons:</b> Robot Battle swaps colours every game and replays each opening with both colours.</li>
+              <li><b>Your choice:</b> you can always choose to move first.</li>
+              <li><b>Fair grading:</b> accuracy compares each move with the best move available <i>at that moment</i>, the same for every player.</li>
+              <li><b>Right level for everyone:</b> Smart Match (fuzzy logic) gives beginners easier robots instead of discouraging them.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>🔍 Transparency</h3>
+            <ul class="ethics-list">
+              <li>The AI <b>shows the moves it compared</b> before every move, and says why it played.</li>
+              <li>Every grade can be explained: the report lists the exact moves behind it.</li>
+              <li>Honest limits: the robots <b>do not learn</b> from your games, and grading looks only 1 move ahead.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>🔒 Privacy and safety for kids</h3>
+            <ul class="ethics-list">
+              <li>Only a <b>first name</b> is stored. No email, no password, no age, no location.</li>
+              <li>Everything stays <b>on this computer</b> (data/gomoku.db). Nothing is sent to the internet.</li>
+              <li>Players can <b>delete all their data</b> from the Scoreboard at any time.</li>
+              <li>No ads, no chat with strangers, no in-game purchases.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCOREBOARD -->
+    <section id="screen-scores" class="screen">
+      <h2 class="screen-title">🏆 Scoreboard</h2>
+      <p class="screen-sub">After every game against a robot, the AI grades how well you played (accuracy and grade) and updates your rating, like a chess rating. Beat stronger robots to climb faster!</p>
+      <div class="scores-layout">
+        <div class="scores-main" id="scoresMain"><div class="panel"><p>Loading…</p></div></div>
+        <aside class="panel">
+          <h3>🌍 Leaderboard</h3>
+          <div id="leaderboard"></div>
+          <h3 class="mt">🤖 Robot ratings</h3>
+          <div id="robotRatings" class="robot-ratings"></div>
+        </aside>
+      </div>
     </section>
 
     <!-- LEARN -->
     <section id="screen-learn" class="screen">
-      <h2 class="screen-title">How to play</h2>
+      <h2 class="screen-title">🎓 Learn with the AI Tutor</h2>
+      <p class="screen-sub">The AI teaches you: read the rules, solve lessons the AI checks and explains, try new puzzles the AI invents for you, then practise with a coach that comments on every move.</p>
+      <div class="lab-tabs" role="tablist">
+        <button class="learn-tab active" data-learn="rules" role="tab">📖 Rules</button>
+        <button class="learn-tab" data-learn="lessons" role="tab">🧑‍🏫 Lessons</button>
+        <button class="learn-tab" data-learn="puzzles" role="tab">🧩 AI puzzles</button>
+        <button class="learn-tab" data-learn="practice" role="tab">🎯 Practise with a coach</button>
+      </div>
+
+      <div class="learn-panel" id="learn-rules">
       <div class="learn-grid" id="learnGrid"></div>
       <div class="keys panel">
         <h3>⌨️ Keyboard shortcuts</h3>
         <p><kbd>P</kbd> or <kbd>Esc</kbd> pause / resume · <kbd>H</kbd> hint · <kbd>U</kbd> undo · <kbd>R</kbd> restart</p>
       </div>
-      <div class="center"><button class="big-btn primary" data-go="levels">Let's play! 🎮</button></div>
+      </div>
+
+      <div class="learn-panel" id="learn-tutor" hidden>
+        <div class="tutor-layout">
+          <aside class="panel">
+            <h3 id="tutorListTitle">Lessons</h3>
+            <div id="tutorList" class="tutor-list"></div>
+          </aside>
+          <div class="board-wrap">
+            <svg id="tutorBoard" viewBox="0 0 400 400" aria-label="Tutor board"></svg>
+            <div class="move-count" id="tutorTurn"></div>
+          </div>
+          <aside class="panel tutor-panel">
+            <div class="bubble"><div class="bubble-face">🦉</div><div class="bubble-text" id="tutorSay">Pick a lesson.</div></div>
+            <div id="tutorIdea" class="tutor-idea"></div>
+            <div class="controls">
+              <button class="ctl" id="tutorHint">💡 Hint</button>
+              <button class="ctl" id="tutorShow">👀 Show answer</button>
+              <button class="ctl primary" id="tutorNext">Next ▶</button>
+            </div>
+            <p class="small" id="tutorScore"></p>
+          </aside>
+        </div>
+      </div>
+
+      <div class="learn-panel" id="learn-practice" hidden>
+        <div class="panel practice">
+          <h3>🎯 Practise with a coach</h3>
+          <p>Play a real game while the AI Tutor watches. After each of your moves it says <b>✅ great move</b>, <b>⚠️ careful</b> or <b>❌ mistake</b>, explains why, and shows a better square on the board.</p>
+          <div class="practice-buttons">
+            <button class="big-btn green" data-practice="Easy">🐣 Practise against Pip (easy)</button>
+            <button class="big-btn primary" data-practice="Medium">🦊 Practise against Foxy</button>
+            <button class="big-btn purple" data-practice="smart">🎯 Smart Match</button>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -329,6 +475,7 @@
         <button class="big-btn primary" id="resumeBtn">▶️ Resume</button>
         <button class="big-btn ghost" id="pRestartBtn">🔄 Restart</button>
         <button class="big-btn ghost" id="pSoundBtn">🔊 Sound: on</button>
+        <button class="big-btn ghost" id="pThemeBtn">🎨 Board theme</button>
         <button class="big-btn ghost" id="pHelpBtn">📖 How to play</button>
         <button class="big-btn ghost danger" id="pExitBtn">🚪 Exit to menu</button>
       </div>
@@ -360,8 +507,33 @@
         <button class="big-btn ghost" id="reviewBtn">See the board</button>
         <button class="big-btn ghost" id="menuBtn">Menu</button>
       </div>
+      <div class="ai-rating" id="modalRating" hidden></div>
+      <div class="smart-next" id="modalSmart" hidden></div>
       <div class="learned" id="modalLearned" hidden></div>
       <div class="report" id="modalReport"></div>
+    </div>
+  </div>
+
+  <!-- PLAYER -->
+  <div class="modal" id="playerModal" role="dialog" aria-modal="true" aria-labelledby="playerTitle" hidden>
+    <div class="modal-card small-card">
+      <h2 id="playerTitle">Who's playing?</h2>
+      <p>Your name is used for your rating and the scoreboard on this computer.</p>
+      <input id="playerName" class="text-input" maxlength="20" placeholder="Your name" autocomplete="off">
+      <div class="avatar-pick" id="avatarPick" role="radiogroup" aria-label="Choose an avatar"></div>
+      <div class="modal-buttons">
+        <button class="big-btn primary" id="playerSave">Let's go!</button>
+        <button class="big-btn ghost" id="playerSkip">Play as guest</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEMES -->
+  <div class="modal" id="themeModal" role="dialog" aria-modal="true" aria-labelledby="themeTitle" hidden>
+    <div class="modal-card">
+      <h2 id="themeTitle">🎨 Choose a board</h2>
+      <div class="theme-grid" id="themeGrid"></div>
+      <div class="modal-buttons"><button class="big-btn primary" id="themeClose">Done</button></div>
     </div>
   </div>
 

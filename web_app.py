@@ -10,6 +10,17 @@ made in Python by the agents in agents.py, through a small JSON API:
     POST /api/save      {mode, winner, moves, ...}    -> record the game as CSV
     GET  /api/opening   ?stones=2&size=15             -> random fair opening
     GET  /api/agents                                  -> what kind of agent each AI is
+    POST /api/result    {player, level, moves, ...}   -> AI grades the game, rating update, saved to DB
+    GET  /api/scoreboard?player=NAME                  -> leaderboard + that player's history
+    POST /api/player    {name, avatar}                -> create or load a player profile
+    DELETE /api/player?name=NAME                      -> delete a player and all their games
+    POST /api/coach     {board, color, move}          -> the AI tutor judges one move and explains it
+    GET  /api/puzzle?kind=win&size=9                  -> the AI generates a new tactics puzzle
+    POST /api/check     {board, color, kind, move}    -> mark a puzzle answer
+    POST /api/fuzzy     {accuracy, mistakes, results} -> fuzzy inference, every step shown
+    GET  /api/smart-match?player=NAME                 -> fuzzy logic picks the next opponent
+    POST /api/formulation {board, color}              -> the game as a state-space search problem
+    GET  /api/fairness                                -> measure the first-move bias with self-play
     POST /api/compare   {board, color}                -> run the search algorithms side by side
     POST /api/evaluate  {board}                       -> heuristic patterns and score
 
@@ -34,10 +45,14 @@ from agents import (
     describe_move, evaluate, generate_moves, is_five, legal_moves, make_agent, pattern_counts,
 )
 from game_analysis import analyze_game
+import fuzzy_logic
+import player_db
+import tutor
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 GAMES_DIR = os.path.join(BASE_DIR, "games", "web")
+DB_PATH = player_db.DB_PATH          # data/gomoku.db (tests point this somewhere else)
 LEVELS = {"Easy", "Blind", "Medium", "Minimax", "Hard", "Expert"}
 
 app = Flask(__name__, static_folder=WEB_DIR, static_url_path="")
@@ -172,6 +187,159 @@ def save():
                         m.get("ai_nodes", ""), m.get("ai_depth", ""), m.get("ai_time_ms", ""),
                         m.get("ai_reason", ""), "".join(board)])
     return jsonify({"saved": os.path.basename(path)})
+
+
+def _db():
+    return player_db.connect(DB_PATH)
+
+
+@app.delete("/api/player")
+def delete_player():
+    """Privacy: a player can remove their name, rating and every recorded game."""
+    con = _db()
+    try:
+        return jsonify({"deleted": player_db.delete_player(con, request.args.get("name"))})
+    except ValueError as e:
+        raise BadRequest(str(e))
+    finally:
+        con.close()
+
+
+@app.post("/api/coach")
+def coach():
+    data = request.get_json(silent=True) or {}
+    board, color, move = _board(data), _color(data), data.get("move")
+    if (not isinstance(move, list) or len(move) != 2 or not all(isinstance(v, int) for v in move)
+            or not all(0 <= v < len(board) for v in move) or board[move[0]][move[1]] is not None):
+        raise BadRequest("move must be an empty [row, col] on the board (the board before the move)")
+    return jsonify(tutor.coach_move(board, color, move))
+
+
+@app.get("/api/puzzle")
+def puzzle():
+    kind = request.args.get("kind", "win")
+    size = request.args.get("size", default=9, type=int)
+    if kind not in tutor.PUZZLE_KINDS:
+        raise BadRequest("kind must be one of " + ", ".join(tutor.PUZZLE_KINDS))
+    if not MIN_BOARD <= size <= 15:
+        raise BadRequest("size must be between 7 and 15")
+    seed = request.args.get("seed", type=int)   # lessons use a fixed seed, so they are always the same
+    try:
+        return jsonify(tutor.make_puzzle(kind, size, seed=seed))
+    except RuntimeError as e:
+        raise BadRequest(str(e))
+
+
+@app.post("/api/check")
+def check():
+    data = request.get_json(silent=True) or {}
+    board, color, kind, move = _board(data), _color(data), data.get("kind"), data.get("move")
+    if kind not in tutor.PUZZLE_KINDS:
+        raise BadRequest("unknown puzzle kind")
+    if (not isinstance(move, list) or len(move) != 2 or not all(isinstance(v, int) for v in move)
+            or not all(0 <= v < len(board) for v in move)):
+        raise BadRequest("move must be [row, col]")
+    return jsonify(tutor.check_answer(board, color, kind, move))
+
+
+@app.post("/api/fuzzy")
+def fuzzy():
+    data = request.get_json(silent=True) or {}
+    try:
+        acc, mis, res = float(data.get("accuracy", 60)), float(data.get("mistakes", 2)), float(data.get("results", 0.5))
+    except (TypeError, ValueError):
+        raise BadRequest("accuracy, mistakes and results must be numbers")
+    out = fuzzy_logic.infer(acc, mis, res)
+    out["variables"] = fuzzy_logic.variables()
+    return jsonify(out)
+
+
+def _smart_match(con, name):
+    recent = player_db.recent_performance(con, name) if name and name.strip() else None
+    if not recent:
+        return {"level": "Medium", "recent": None, "fuzzy": None,
+                "why": "No games yet, so we start in the middle with Foxy."}
+    f = fuzzy_logic.infer(recent["accuracy"], recent["mistakes"], recent["results"])
+    level = fuzzy_logic.recommend(recent["last_opponent"], f["adjust"])
+    return {"level": level, "recent": recent, "fuzzy": f,
+            "why": f"Skill {f['skill']:.0f}/100 ({f['skill_label']}), difficulty: {f['adjust_label']}."}
+
+
+@app.get("/api/smart-match")
+def smart_match():
+    con = _db()
+    try:
+        return jsonify(_smart_match(con, request.args.get("player")))
+    except ValueError as e:
+        raise BadRequest(str(e))
+    finally:
+        con.close()
+
+
+@app.post("/api/formulation")
+def formulation():
+    data = request.get_json(silent=True) or {}
+    return jsonify(tutor.formulate(_board(data), _color(data)))
+
+
+@app.get("/api/fairness")
+def fairness():
+    games = max(4, min(20, request.args.get("games", default=10, type=int)))
+    return jsonify(tutor.fairness_check(games))
+
+
+@app.post("/api/player")
+def player():
+    data = request.get_json(silent=True) or {}
+    con = _db()
+    try:
+        row = player_db.get_or_create_player(con, data.get("name"), data.get("avatar"))
+        return jsonify(player_db.player_profile(con, row["name"]))
+    except ValueError as e:
+        raise BadRequest(str(e))
+    finally:
+        con.close()
+
+
+@app.post("/api/result")
+def result():
+    """A finished human-vs-robot game: the AI grades it and updates the rating."""
+    data = request.get_json(silent=True) or {}
+    moves, size = _moves(data), _size(data)
+    human = _color(data, "human_color")
+    level, winner = data.get("level"), data.get("winner")
+    if level not in player_db.ROBOT_RATINGS:
+        raise BadRequest("level must be one of " + ", ".join(player_db.ROBOT_RATINGS))
+    if winner not in ("black", "white", "draw"):
+        raise BadRequest("winner must be black, white or draw")
+    try:
+        analysis = analyze_game(moves, human, size)
+    except ValueError as e:
+        raise BadRequest(str(e))
+    con = _db()
+    try:
+        rating = player_db.record_game(con, data.get("player"), level, human, winner, moves, size, analysis,
+                                       duration_s=int(data.get("duration_s") or 0),
+                                       mode=str(data.get("mode") or "quick"), avatar=data.get("avatar"))
+        match = _smart_match(con, rating["player"])
+    except ValueError as e:
+        raise BadRequest(str(e))
+    finally:
+        con.close()
+    return jsonify({"analysis": analysis, "rating": rating, "smart_match": match})
+
+
+@app.get("/api/scoreboard")
+def scoreboard():
+    con = _db()
+    try:
+        name = request.args.get("player")
+        profile = player_db.player_profile(con, name) if name and name.strip() else None
+        return jsonify({"leaderboard": player_db.leaderboard(con), "player": profile,
+                        "robots": [{"level": k, "name": player_db.ROBOT_NAMES[k], "rating": v}
+                                   for k, v in player_db.ROBOT_RATINGS.items()]})
+    finally:
+        con.close()
 
 
 AGENT_CLASSES = {
